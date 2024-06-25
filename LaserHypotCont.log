@@ -1,0 +1,59 @@
+2024-06-24 06:53:14,397 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 07:07:12,377 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 07:07:22,742 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 07:07:22,773 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 07:07:22,902 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 07:07:27,145 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 09:06:27,585 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 09:06:36,202 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 09:06:36,239 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:06:36,367 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:07:58,041 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 09:08:05,652 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 09:08:05,684 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:08:05,813 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:08:19,026 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 09:08:19,921 - Rotating Log - ERROR - Error Getting Admin Password: 'Password'
+2024-06-24 09:11:01,006 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 09:11:01,044 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:11:01,172 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:22:33,607 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 09:22:34,489 - Rotating Log - ERROR - Error Getting Admin Password: 'Password'
+2024-06-24 09:22:59,244 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 09:22:59,281 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 09:22:59,409 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:32:24,073 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:32:33,162 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:32:33,205 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:32:33,333 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:33:01,140 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:33:07,475 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:33:07,512 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:33:07,640 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:38:22,780 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:38:28,857 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:38:33,922 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:38:38,379 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:38:38,413 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:38:38,542 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:39:04,994 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:39:08,986 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:39:09,025 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:39:09,153 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:39:09,169 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:40:55,015 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:41:16,688 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:41:19,445 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:41:19,481 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:41:19,608 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:42:14,098 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:42:22,296 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:42:27,313 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:42:31,277 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:42:33,978 - Rotating Log - ERROR - Exception occured at Hypot execution: (-2147192831, None, ('ARI38XX: Instrument error detected.  Use ErrorQuery() to determine error(s).', 'ARI38XX.ARI38XX.1', None, 0, None))
+2024-06-24 11:43:08,839 - Rotating Log - ERROR - Emergency Stop Used!
+2024-06-24 11:43:08,886 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:43:09,014 - Rotating Log - ERROR - Emergency Stop Done!
+2024-06-24 11:44:15,687 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 11:45:49,014 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
+2024-06-24 13:18:46,789 - Rotating Log - ERROR - Connection to Laser Marker failed: [WinError 10061] No connection could be made because the target machine actively refused it
