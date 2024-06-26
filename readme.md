@@ -50,7 +50,8 @@ This project is designed to run a 10-cavity fixture through a variety of tests a
 
 ## Configuration
 
-- config.yaml to modify settings of hypot, continuity, and laser
+- settings.ini to modify settings of hypot, continuity, and laser
+- settings.ini also for modifying hardware IDs before program launch
 
 ## Contributions
 

@@ -34,6 +34,10 @@ config = configparser.ConfigParser()
 config['Run Cavity'] = {}
 config['Laser Enabled'] = {}
 config['Admin'] = {}
+config['Hypot'] = {}
+config['Continuity'] = {}
+config['Laser'] = {}
+config['Hardware IDs'] = {}
 
 # Driver Variables
 cc.GetModule('SC6540.dll')
@@ -60,7 +64,36 @@ cavityContinuitySuccesses = {}
 cavityHypotSuccesses = {}
 runCavity = {}
 laserEnabled = {}
-
+hypotSettings = {
+    'voltage': 1240,  # AC Voltage
+    'current high limit': 20,  # Current High Limit
+    'current low limit': 0,  # Current Low Limit
+    'ramp up time': 0.1,  # Ramp up time in seconds
+    'ramp down time': 2,  # Dewll time in seconds
+    'dwell time': 0,  # RampDownTime in seconds
+    'arcsense level': 5,  # ArcSense level
+    'arc detection': True,  # Arc detection
+    'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
+    'continuity test': False,  # Continuity test
+    'high limit resistance': 1.5,  # High limit of the continuity resistance
+    'low limit resistance': 0,  # Low limit of the continuity resistance
+    'resistance offset': .5  # Continuity resistance offset
+}
+continuitySettings = {
+    'voltage': 1240,  # AC Voltage
+    'current high limit': 20,  # Current High Limit
+    'current low limit': 0,  # Current Low Limit
+    'ramp up time': 0.1,  # Ramp up time in seconds
+    'ramp down time': 2,  # Dewll time in seconds
+    'dwell time': 0,  # RampDownTime in seconds
+    'arcsense level': 5,  # ArcSense level
+    'arc detection': True,  # Arc detection
+    'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
+    'continuity test': True,  # Continuity test
+    'high limit resistance': 1.5,  # High limit of the continuity resistance
+    'low limit resistance': 0,  # Low limit of the continuity resistance
+    'resistance offset': .5  # Continuity resistance offset
+}
 # UI Variables
 rectangles = {}
 statusText = {}
@@ -135,14 +168,14 @@ try:
     sc6540Driver1.Initialize(portNumSC1, True, False, sc6540OptionString1)
 except Exception as e:
     print(f'Connection to SC6540 Switch1 failed: {e}')
-    logger.error(f'Connection SC6540 Switch1 failed: {e}')
+    logger.error(f'Connection to SC6540 Switch1 failed: {e}')
 
 try:
     sc6540Driver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
     sc6540OptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
     sc6540Driver2.Initialize(portNumSC2, True, False, sc6540OptionString2)
 except Exception as e:
-    print('Connection to SC6540 Switch2 failed')
+    print(f'Connection to SC6540 Switch2 failed: {e}')
     logger.error(f'Connection to SC6540 Switch2 failed: {e}')
 
 
@@ -156,13 +189,36 @@ def get_settings():
         adminPassword = '6789'
         config['Admin']['Password'] = '6789'
     for x in range(1, 11):
+        cav = 'cavity' + str(x)
         try:
-            cav = 'cavity' + str(x)
             runCavity[cav] = tk.IntVar(value=int(config['Run Cavity'][cav]))
             laserEnabled[cav] = tk.IntVar(value=int(config['Laser Enabled'][cav]))
         except Exception as ex:
             logger.error(f'Error Getting settings file: {ex}')
+            runCavity[cav] = tk.IntVar(value=1)
+            laserEnabled[cav] = tk.IntVar(value=1)
 
+    for key, value in config['Hypot'].items():  # Have to convert to their proper types so the AddACWTest can parse them properly
+        if value == 'True':
+            continuitySettings[key] = True
+        elif value == 'False':
+            continuitySettings[key] = False
+        else:
+            try:
+                continuitySettings[key] = int(value)
+            except:
+                continuitySettings[key] = float(value)
+
+    for key, value in config['Continuity'].items():  # Have to convert to their proper types so the AddACWTest can parse them properly
+        if value == 'True':
+            continuitySettings[key] = True
+        elif value == 'False':
+            continuitySettings[key] = False
+        else:
+            try:
+                continuitySettings[key] = int(value)
+            except:
+                continuitySettings[key] = float(value)
 
 def save_settings():
     # Write the config object to a file
@@ -174,7 +230,13 @@ def save_settings():
             cav = 'cavity' + str(x)
             config['Run Cavity'][cav] = str(runCavity[cav].get())
             config['Laser Enabled'][cav] = str(laserEnabled[cav].get())
-        config.write(configfile)
+
+        for key, value in hypotSettings.items():
+            config['Hypot'][key] = str(value)
+        for key, value in continuitySettings.items():
+            config['Continuity'][key] = str(value)
+
+        config.write(configfile)  # Close and save to settings file
 
     update_colors(canvas)
 
@@ -296,8 +358,7 @@ def stop():
         sys.exit()
     finally:
         # Ensure that the Tkinter main loop exits cleanly
-        sc6540Driver1.Execution.DisableAllChannels()
-        sc6540Driver2.Execution.DisableAllChannels()
+        logger.error('Hit finally in emergency stop!')
         logger.error('Emergency Stop Done!')
         root.quit()
         sys.exit()
@@ -384,38 +445,11 @@ def hypot_execution(continuityTest, cavityNum):
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
     if (continuityTest):
-        hypotDriver.Steps.AddACWTest(
-            1240,  # AC Voltage
-            20,  # Current High Limit
-            0,  # Current Low Limit
-            0.1,  # Ramp up time in seconds
-            2,  # Dewll time in seconds
-            0,  # RampDownTime in seconds
-            5,  # ArcSense level
-            True,  # Arc detection
-            ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-            True,  # Continuity test
-            1.5,  # High limit of the continuity resistance
-            0,  # Low limit of the continuity resistance
-            .5)  # Continuity resistance offset
-        hypotDriver.Files.Save()
+        hypotDriver.Steps.AddACWTest(*tuple(continuitySettings.values()))  # * is the unpacking operator to separate tuple into parameters
     else:
-        hypotDriver.Steps.AddACWTest(
-            1240,  # AC Voltage
-            20,  # Current High Limit
-            0,  # Current Low Limit
-            0.1,  # Ramp up time in seconds
-            2,  # Dewll time in seconds
-            0,  # RampDownTime in seconds
-            5,  # ArcSense level
-            True,  # Arc detection
-            ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-            False,  # Continuity test
-            1.5,  # High limit of the continuity resistance
-            0,  # Low limit of the continuity resistance
-            .5)  # Continuity resistance offset
-        hypotDriver.Files.Save()
+        hypotDriver.Steps.AddACWTest(*tuple(hypotSettings.values()))  # * is the unpacking operator to separate tuple into parameters
 
+    hypotDriver.Files.Save()
     # Start test
     hypotDriver.Execution.Execute()
     # Output Results
