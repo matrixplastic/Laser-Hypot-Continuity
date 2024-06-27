@@ -16,18 +16,21 @@ from logging.handlers import TimedRotatingFileHandler
 
 # Setup Logging
 scriptDir = os.path.dirname(__file__)  # Absolute dir the script is in
-logname = 'LaserHypotCont.log'
+logname = 'logs/LaserHypotCont.log'
 absFilePath = os.path.join(scriptDir, logname)
 logger = logging.getLogger('Rotating Log')
 try:
+    if not os.path.exists('logs/'):
+        os.makedirs('logs/')
     # Rotating Logs 1 every day, keep for 30 days
     handler = TimedRotatingFileHandler(absFilePath, when='h', interval=8, backupCount=30)
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     # Set the suffix to include the date format and '.log'
     handler.suffix = "%Y-%m-%d_%H-%M-%S.log"
     logger.addHandler(handler)
+
 except Exception as e:
-    print(f'Error creating new Log file, permissions error: {e}')
+    print(f'Error creating new Log file: {e}')
 
 # Setup Settings File
 config = configparser.ConfigParser()
@@ -551,7 +554,7 @@ def admin_panel():
             if not adminWindow.winfo_exists():
                 adminWindow = tk.Toplevel(root)
 
-        adminWindow.geometry('900x450')
+        adminWindow.geometry('1400x600')
         adminWindow.title('Admin Panel')
         adminWindow.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
         adminWindow.attributes('-topmost', True)  # Force it to be above all other program windows
@@ -595,6 +598,8 @@ def admin_panel():
                 laserCheckBoxes[x].grid(row=x, column=5)
             else:
                 laserCheckBoxes[x].grid(row=x - 5, column=6)
+
+        # Continuity and Hypot Settings
 
 
 # Function to create a grid of rectangles and store references
