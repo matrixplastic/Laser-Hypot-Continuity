@@ -652,8 +652,8 @@ def admin_panel():
             print("Arc Detection:", continuityTkinterObjs['ArcDetectionBool'].get())
         continuityTkinterObjs['ArcDetectionBool'] = tk.BooleanVar(value=continuitySettings['arc detection'])
 
-        continuityTkinterObjs['ArcSenseLabel'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['ArcSenseLabel'].grid(row=8, column=9, padx=20)
+        continuityTkinterObjs['ArcDetectionLabel'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjs['ArcDetectionLabel'].grid(row=8, column=9, padx=20)
         continuityTkinterObjs['ArcDetectionRadioTrue'] = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=continuityTkinterObjs['ArcDetectionBool'], command=print_value)
         continuityTkinterObjs['ArcDetectionRadioTrue'].grid(row=8, column=10, padx=20)
         continuityTkinterObjs['ArcDetectionRadioFalse'] = ttk.Radiobutton(adminWindow, text='No', value=False, variable=continuityTkinterObjs['ArcDetectionBool'], command=print_value)
@@ -683,12 +683,88 @@ def admin_panel():
         continuityTkinterObjs['ResistanceOffset'].set(continuitySettings['resistance offset'])
         continuityTkinterObjs['ResistanceOffset'].grid(row=12, column=10, padx=20)
 
+        # Hypot Settings
 
+        hypotTkinterObjs['HeaderLabel'] = tk.Label(adminWindow, text='Hypot Settings', font=helv, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['HeaderLabel'].grid(row=0, column=13, columnspan=2, padx=20)
 
+        hypotTkinterObjs['VoltLabel'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['VoltLabel'].grid(row=1, column=12, padx=20)
+        hypotTkinterObjs['Volt'] = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
+        hypotTkinterObjs['Volt'].set(hypotSettings['voltage'])
+        hypotTkinterObjs['Volt'].grid(row=1, column=13, padx=20)
 
+        hypotTkinterObjs['HighLimitLabel'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['HighLimitLabel'].grid(row=2, column=12, padx=20)
+        hypotTkinterObjs['HighLimit'] = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
+        hypotTkinterObjs['HighLimit'].set(hypotSettings['current high limit'])
+        hypotTkinterObjs['HighLimit'].grid(row=2, column=13, padx=20)
 
-        hypotHeaderLabel = tk.Label(adminWindow, text='Hypot Settings', font=helv, fg=textColor, bg=backgroundColor)
-        hypotHeaderLabel.grid(row=0, column=13, columnspan=2, padx=20)
+        hypotTkinterObjs['LowLimitLabel'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['LowLimitLabel'].grid(row=3, column=12, padx=20)
+        hypotTkinterObjs['LowLimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=12, increment=1)
+        hypotTkinterObjs['LowLimit'].set(hypotSettings['current low limit'])
+        hypotTkinterObjs['LowLimit'].grid(row=3, column=13, padx=20)
+
+        hypotTkinterObjs['RampUpTimeLabel'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['RampUpTimeLabel'].grid(row=4, column=12, padx=20)
+        hypotTkinterObjs['RampUpTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['RampUpTime'].set(hypotSettings['ramp up time'])
+        hypotTkinterObjs['RampUpTime'].grid(row=4, column=13, padx=20)
+
+        hypotTkinterObjs['RampDownTimeLabel'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['RampDownTimeLabel'].grid(row=5, column=12, padx=20)
+        hypotTkinterObjs['RampDownTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['RampDownTime'].set(hypotSettings['ramp down time'])
+        hypotTkinterObjs['RampDownTime'].grid(row=5, column=13, padx=20)
+
+        hypotTkinterObjs['DwellTimeLabel'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['DwellTimeLabel'].grid(row=6, column=12, padx=20)
+        hypotTkinterObjs['DwellTime'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        hypotTkinterObjs['DwellTime'].set(hypotSettings['dwell time'])
+        hypotTkinterObjs['DwellTime'].grid(row=6, column=13, padx=20)
+
+        hypotTkinterObjs['ArcSenseLabel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['ArcSenseLabel'].grid(row=7, column=12, padx=20)
+        hypotTkinterObjs['ArcSense'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        hypotTkinterObjs['ArcSense'].set(hypotSettings['arcsense level'])
+        hypotTkinterObjs['ArcSense'].grid(row=7, column=13, padx=20)
+
+        def print_value():  # Have to have command parameter in radio buttons or default value doesn't select properly. Possible tkinter bug
+            print("Arc Detection:", hypotTkinterObjs['ArcDetectionBool'].get())
+
+        hypotTkinterObjs['ArcDetectionBool'] = tk.BooleanVar(value=hypotSettings['arc detection'])
+
+        hypotTkinterObjs['ArcDetectionLabel'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['ArcDetectionLabel'].grid(row=8, column=12, padx=20)
+        hypotTkinterObjs['ArcDetectionRadioTrue'] = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=hypotTkinterObjs['ArcDetectionBool'], command=print_value)
+        hypotTkinterObjs['ArcDetectionRadioTrue'].grid(row=8, column=13, padx=20)
+        hypotTkinterObjs['ArcDetectionRadioFalse'] = ttk.Radiobutton(adminWindow, text='No', value=False, variable=hypotTkinterObjs['ArcDetectionBool'], command=print_value)
+        hypotTkinterObjs['ArcDetectionRadioFalse'].grid(row=8, column=14, padx=20)
+
+        hypotTkinterObjs['FrequencyLabel'] = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['FrequencyLabel'].grid(row=9, column=12, padx=20)
+        hypotTkinterObjs['Frequency'] = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
+        hypotTkinterObjs['Frequency'].set(hypotSettings['frequency'])
+        hypotTkinterObjs['Frequency'].grid(row=9, column=13, padx=20)
+
+        hypotTkinterObjs['HighLimitResistanceLabel'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['HighLimitResistanceLabel'].grid(row=10, column=12, padx=20)
+        hypotTkinterObjs['HighLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['HighLimitResistance'].set(hypotSettings['high limit resistance'])
+        hypotTkinterObjs['HighLimitResistance'].grid(row=10, column=13, padx=20)
+
+        hypotTkinterObjs['LowLimitResistanceLabel'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['LowLimitResistanceLabel'].grid(row=11, column=12, padx=20)
+        hypotTkinterObjs['LowLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['LowLimitResistance'].set(hypotSettings['low limit resistance'])
+        hypotTkinterObjs['LowLimitResistance'].grid(row=11, column=13, padx=20)
+
+        hypotTkinterObjs['ResistanceOffsetLabel'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjs['ResistanceOffsetLabel'].grid(row=12, column=12, padx=20)
+        hypotTkinterObjs['ResistanceOffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
+        hypotTkinterObjs['ResistanceOffset'].set(hypotSettings['resistance offset'])
+        hypotTkinterObjs['ResistanceOffset'].grid(row=12, column=13, padx=20)
 
     else: # Wrong password
         pass
