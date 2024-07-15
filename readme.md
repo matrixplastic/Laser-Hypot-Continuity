@@ -42,6 +42,7 @@ This project is designed to run a 10-cavity fixture through a variety of tests a
 - **Hypot Model:** Hypot3805 <https://www.arisafety.com/model-3805.html>
 - **Hypot Switch Model:** SC6540 <https://www.arisafety.com/model-sc6540.html>
 - **Laser Model:** Keyence 3 Axis MD-X1000 Laser Marker <https://www.keyence.com/products/marker/laser-marker/md-x1000_1500/models/md-x1000/>
+- Developed and tested on Windows 11 Pro
 
 ## Syntax
 
@@ -59,6 +60,8 @@ This project is designed to run a 10-cavity fixture through a variety of tests a
 
 ## Installation
 
+It is recommended to disable "Allow the computer to turn off this device to save power" in control panel on the USB Hubs, 
+or else they can lose connection and need to be unplugged and replugged<br>
 To install this project, clone the repository and install the required dependencies:
 
 ```sh

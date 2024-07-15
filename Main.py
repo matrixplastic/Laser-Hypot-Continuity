@@ -103,6 +103,7 @@ statusText = {}
 root = tk.Tk()
 root.geometry('1800x900')
 root.title('Main')
+root.state('zoomed')
 backgroundColor = '#2A2E32'
 canvasColor = '#3D434B'
 enabledColor = '#26A671'
@@ -548,13 +549,13 @@ def admin_panel():
                 pass
             else:
                 adminWindow = tk.Toplevel(root)
-        except NameError:  # exception? we are now here.
+        except (NameError, tk.TclError):  # exception? we are now here.
             adminWindow = tk.Toplevel(root)
         else:  # no exception and no window? creating window.
             if not adminWindow.winfo_exists():
                 adminWindow = tk.Toplevel(root)
 
-        adminWindow.geometry('1400x600')
+        adminWindow.geometry('1600x800')
         adminWindow.title('Admin Panel')
         adminWindow.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
         adminWindow.attributes('-topmost', True)  # Force it to be above all other program windows
@@ -582,9 +583,7 @@ def admin_panel():
 
         cavityCheckBoxes = {}
         for x in range(1, 11):
-            cavityCheckBoxes[x] = Checkbutton(adminWindow, text='Cavity' + str(x),
-                                              variable=runCavity['cavity' + str(x)], onvalue=1, offvalue=0, fg='white', selectcolor='Black', bg=backgroundColor,
-                                              font=helvmedium)
+            cavityCheckBoxes[x] = Checkbutton(adminWindow, text='Cavity' + str(x), variable=runCavity['cavity' + str(x)], onvalue=1, offvalue=0, fg='white', selectcolor='Black', bg=backgroundColor, font=helvmedium)
             if x < 6:
                 cavityCheckBoxes[x].grid(row=x, column=1)
             else:
@@ -600,6 +599,97 @@ def admin_panel():
                 laserCheckBoxes[x].grid(row=x - 5, column=6)
 
         # Continuity and Hypot Settings
+        contHeaderLabel = tk.Label(adminWindow, text='Continuity Settings', font=helv, fg=textColor, bg=backgroundColor)
+        contHeaderLabel.grid(row=0, column=9, columnspan=2, padx=30)
+
+        contVoltLabel = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contVoltLabel.grid(row=1, column=9, padx=20)
+        contVolt = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
+        contVolt.set(continuitySettings['voltage'])
+        contVolt.grid(row=1, column=10, padx=20)
+
+        contHighLimitLabel = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contHighLimitLabel.grid(row=2, column=9, padx=20)
+        contHighLimit = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
+        contHighLimit.set(continuitySettings['current high limit'])
+        contHighLimit.grid(row=2, column=10, padx=20)
+
+        contLowLimitLabel = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contLowLimitLabel.grid(row=3, column=9, padx=20)
+        contLowLimit = ttk.Spinbox(adminWindow, width=10, from_=0, to=9, increment=1)
+        contLowLimit.set(continuitySettings['current low limit'])
+        contLowLimit.grid(row=3, column=10, padx=20)
+
+        contRampUpTimeLabel = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contRampUpTimeLabel.grid(row=4, column=9, padx=20)
+        contRampUpTime = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        contRampUpTime.set(continuitySettings['ramp up time'])
+        contRampUpTime.grid(row=4, column=10, padx=20)
+
+        contRampDownTimeLabel = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contRampDownTimeLabel.grid(row=5, column=9, padx=20)
+        contRampDownTime = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        contRampDownTime.set(continuitySettings['ramp down time'])
+        contRampDownTime.grid(row=5, column=10, padx=20)
+
+        contDwellTimeLabel = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contDwellTimeLabel.grid(row=6, column=9, padx=20)
+        contDwellTime = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        contDwellTime.set(continuitySettings['dwell time'])
+        contDwellTime.grid(row=6, column=10, padx=20)
+
+        contArcSenseLabel = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contArcSenseLabel.grid(row=7, column=9, padx=20)
+        contArcSense = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        contArcSense.set(continuitySettings['arcsense level'])
+        contArcSense.grid(row=7, column=10, padx=20)
+
+        def print_value():  # Have to have command parameter in radio buttons or default value doesn't select properly. Possible tkinter bug
+            print("Arc Detection:", contArcDetectionBool.get())
+        contArcDetectionBool = tk.BooleanVar(value=continuitySettings['arc detection'])
+        # Create and place the label
+        contArcSenseLabel = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contArcSenseLabel.grid(row=8, column=9, padx=20)
+
+        # Create and place the radio buttons
+        contArcDetectionRadioTrue = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=contArcDetectionBool, command=print_value)
+        contArcDetectionRadioTrue.grid(row=8, column=10, padx=20)
+        contArcDetectionRadioFalse = ttk.Radiobutton(adminWindow, text='No', value=False, variable=contArcDetectionBool, command=print_value)
+        contArcDetectionRadioFalse.grid(row=8, column=11, padx=20)
+
+        contFrequencyLabel = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contFrequencyLabel.grid(row=9, column=9, padx=20)
+        contFrequency = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
+        contFrequency.set(continuitySettings['frequency'])
+        contFrequency.grid(row=9, column=10, padx=20)
+
+        contHighLimitResistanceLabel = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contHighLimitResistanceLabel.grid(row=10, column=9, padx=20)
+        contHighLimitResistance = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        contHighLimitResistance.set(continuitySettings['high limit resistance'])
+        contHighLimitResistance.grid(row=10, column=10, padx=20)
+
+        contLowLimitResistanceLabel = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contLowLimitResistanceLabel.grid(row=11, column=9, padx=20)
+        contLowLimitResistance = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        contLowLimitResistance.set(continuitySettings['low limit resistance'])
+        contLowLimitResistance.grid(row=11, column=10, padx=20)
+
+        contResistanceOffsetLabel = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
+        contResistanceOffsetLabel.grid(row=12, column=9, padx=20)
+        contResistanceOffset = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
+        contResistanceOffset.set(continuitySettings['resistance offset'])
+        contResistanceOffset.grid(row=12, column=10, padx=20)
+
+
+
+
+
+        hypotHeaderLabel = tk.Label(adminWindow, text='Hypot Settings', font=helv, fg=textColor, bg=backgroundColor)
+        hypotHeaderLabel.grid(row=0, column=13, columnspan=2, padx=20)
+
+    else: # Wrong password
+        pass
 
 
 # Function to create a grid of rectangles and store references
