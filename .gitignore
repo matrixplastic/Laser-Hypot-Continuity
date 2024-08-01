@@ -1,5 +1,3 @@
 .venv/
-/*.log
-/logs/
-/logs/*
-settings.ini
+./logs/
+./settings.ini
