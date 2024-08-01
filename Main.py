@@ -67,38 +67,46 @@ cavityContinuitySuccesses = {}
 cavityHypotSuccesses = {}
 runCavity = {}
 laserEnabled = {}
-hypotSettings = {
+hypotSettings = {}
+continuitySettings = {}
+defaultHypotSettings = {
     'voltage': 1240,  # AC Voltage
-    'current high limit': 20,  # Current High Limit
-    'current low limit': 0,  # Current Low Limit
-    'ramp up time': 0.1,  # Ramp up time in seconds
-    'ramp down time': 2,  # Dewll time in seconds
-    'dwell time': 0,  # RampDownTime in seconds
-    'arcsense level': 5,  # ArcSense level
-    'arc detection': True,  # Arc detection
+    'currenthighlimit': 20,  # Current High Limit
+    'currentlowlimit': 0,  # Current Low Limit
+    'rampuptime': 0.1,  # Ramp up time in seconds
+    'rampdowntime': 2,  # Dewll time in seconds
+    'dwelltime': 0,  # RampDownTime in seconds
+    'arcsenselevel': 5,  # ArcSense level
+    'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-    'continuity test': False,  # Continuity test
-    'high limit resistance': 1.5,  # High limit of the continuity resistance
-    'low limit resistance': 0,  # Low limit of the continuity resistance
-    'resistance offset': .5  # Continuity resistance offset
+    'continuitytest': False,  # Continuity test
+    'highlimitresistance': 1.5,  # High limit of the continuity resistance
+    'lowlimitresistance': 0,  # Low limit of the continuity resistance
+    'resistanceoffset': .5  # Continuity resistance offset
 }
-continuitySettings = {
+defaultContinuitySettings = {
     'voltage': 1240,  # AC Voltage
-    'current high limit': 20,  # Current High Limit
-    'current low limit': 0,  # Current Low Limit
-    'ramp up time': 0.1,  # Ramp up time in seconds
-    'ramp down time': 2,  # Dewll time in seconds
-    'dwell time': 0,  # RampDownTime in seconds
-    'arcsense level': 5,  # ArcSense level
-    'arc detection': True,  # Arc detection
+    'currenthighlimit': 20,  # Current High Limit
+    'currentlowlimit': 0,  # Current Low Limit
+    'rampuptime': 0.1,  # Ramp up time in seconds
+    'rampdowntime': 2,  # Dewll time in seconds
+    'dwelltime': 0,  # RampDownTime in seconds
+    'arcsenselevel': 5,  # ArcSense level
+    'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-    'continuity test': True,  # Continuity test
-    'high limit resistance': 1.5,  # High limit of the continuity resistance
-    'low limit resistance': 0,  # Low limit of the continuity resistance
-    'resistance offset': .5  # Continuity resistance offset
+    'continuitytest': True,  # Continuity test
+    'highlimitresistance': 1.5,  # High limit of the continuity resistance
+    'lowlimitresistance': 0,  # Low limit of the continuity resistance
+    'resistanceoffset': .5  # Continuity resistance offset
 }
+
+# Admin Panel Settings Variables
 continuityTkinterObjs = {}
+continuityTkinterObjsLabel = {}
+continuityArcDetectionBool = None
 hypotTkinterObjs = {}
+hypotTkinterObjsLabel = {}
+hypotArcDetectionBool = None
 
 # UI Variables
 rectangles = {}
@@ -205,18 +213,35 @@ def get_settings():
             runCavity[cav] = tk.IntVar(value=1)
             laserEnabled[cav] = tk.IntVar(value=1)
 
-    for key, value in config['Hypot'].items():  # Have to convert to their proper types so the AddACWTest can parse them properly
+    # Hypot
+    for key, defaultValue in defaultHypotSettings.items():
+        # Make sure values exist
+        if key not in config['Hypot']:
+            value = defaultValue
+        else:
+            value = config['Hypot'][key]
+
+        # Convert to their proper types so the AddACWTest can parse them properly
         if value == 'True':
-            continuitySettings[key] = True
+            hypotSettings[key] = True
         elif value == 'False':
-            continuitySettings[key] = False
+            hypotSettings[key] = False
         else:
             try:
-                continuitySettings[key] = int(value)
+                hypotSettings[key] = int(value)
             except:
-                continuitySettings[key] = float(value)
+                hypotSettings[key] = float(value)
 
-    for key, value in config['Continuity'].items():  # Have to convert to their proper types so the AddACWTest can parse them properly
+    # Continuity
+    for key, defaultValue in defaultContinuitySettings.items():
+        # Make sure values exist
+
+        if key not in config['Continuity']:
+            value = defaultValue
+        else:
+            value = config['Continuity'][key]
+
+        # Convert to their proper types so the AddACWTest can parse them properly
         if value == 'True':
             continuitySettings[key] = True
         elif value == 'False':
@@ -238,13 +263,16 @@ def save_settings():
             config['Run Cavity'][cav] = str(runCavity[cav].get())
             config['Laser Enabled'][cav] = str(laserEnabled[cav].get())
 
-        for key, value in hypotSettings.items():
-            config['Hypot'][key] = str(value)
-        for key, value in continuitySettings.items():
-            config['Continuity'][key] = str(value)
+        for key, value in hypotTkinterObjs.items():
+            config['Hypot'][key] = str(value.get())
+        config['Hypot']['arcdetection'] = str(hypotArcDetectionBool.get())
+
+        for key, value in continuityTkinterObjs.items():
+            config['Continuity'][key] = str(value.get())
+        config['Continuity']['arcdetection'] = str(continuityArcDetectionBool.get())
+
 
         config.write(configfile)  # Close and save to settings file
-
     update_colors(canvas)
 
 
@@ -530,6 +558,7 @@ def read_laser():
 
 
 def admin_panel():
+    get_settings()
     def toggle_cavity():
         for key, value in cavityCheckBoxes.items():
             value.toggle()
@@ -601,170 +630,177 @@ def admin_panel():
             else:
                 laserCheckBoxes[x].grid(row=x - 5, column=6)
 
+        # Breaks up view a bit, improves legibility
+        verticalSeparator = Frame(adminWindow, bg="red", height=800, width=2)
+        verticalSeparator.place(x=710, y=0)
+
         # Continuity and Hypot Settings
 
-        continuityTkinterObjs['HeaderLabel'] = tk.Label(adminWindow, text='Continuity Settings', font=helv, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['HeaderLabel'].grid(row=0, column=9, columnspan=2, padx=30)
+        continuityTkinterObjsLabel['header'] = tk.Label(adminWindow, text='Continuity Settings', font=helv, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['header'].grid(row=0, column=9, columnspan=2, padx=30)
 
-        continuityTkinterObjs['VoltLabel'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['VoltLabel'].grid(row=1, column=9, padx=20)
-        continuityTkinterObjs['Volt'] = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
-        continuityTkinterObjs['Volt'].set(continuitySettings['voltage'])
-        continuityTkinterObjs['Volt'].grid(row=1, column=10, padx=20)
+        continuityTkinterObjsLabel['voltage'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['voltage'].grid(row=1, column=9, padx=20)
+        continuityTkinterObjs['voltage'] = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
+        continuityTkinterObjs['voltage'].set(continuitySettings['voltage'])
+        continuityTkinterObjs['voltage'].grid(row=1, column=10, padx=20)
 
-        continuityTkinterObjs['HighLimitLabel'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['HighLimitLabel'].grid(row=2, column=9, padx=20)
-        continuityTkinterObjs['HighLimit'] = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
-        continuityTkinterObjs['HighLimit'].set(continuitySettings['current high limit'])
-        continuityTkinterObjs['HighLimit'].grid(row=2, column=10, padx=20)
+        continuityTkinterObjsLabel['currenthighlimit'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['currenthighlimit'].grid(row=2, column=9, padx=20)
+        continuityTkinterObjs['currenthighlimit'] = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
+        continuityTkinterObjs['currenthighlimit'].set(continuitySettings['currenthighlimit'])
+        continuityTkinterObjs['currenthighlimit'].grid(row=2, column=10, padx=20)
 
-        continuityTkinterObjs['LowLimitLabel'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['LowLimitLabel'].grid(row=3, column=9, padx=20)
-        continuityTkinterObjs['LowLimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=9, increment=1)
-        continuityTkinterObjs['LowLimit'].set(continuitySettings['current low limit'])
-        continuityTkinterObjs['LowLimit'].grid(row=3, column=10, padx=20)
+        continuityTkinterObjsLabel['currentlowlimit'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['currentlowlimit'].grid(row=3, column=9, padx=20)
+        continuityTkinterObjs['currentlowlimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=9, increment=1)
+        continuityTkinterObjs['currentlowlimit'].set(continuitySettings['currentlowlimit'])
+        continuityTkinterObjs['currentlowlimit'].grid(row=3, column=10, padx=20)
 
-        continuityTkinterObjs['RampUpTimeLabel'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['RampUpTimeLabel'].grid(row=4, column=9, padx=20)
-        continuityTkinterObjs['RampUpTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        continuityTkinterObjs['RampUpTime'].set(continuitySettings['ramp up time'])
-        continuityTkinterObjs['RampUpTime'].grid(row=4, column=10, padx=20)
+        continuityTkinterObjsLabel['rampuptime'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['rampuptime'].grid(row=4, column=9, padx=20)
+        continuityTkinterObjs['rampuptime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        continuityTkinterObjs['rampuptime'].set(continuitySettings['rampuptime'])
+        continuityTkinterObjs['rampuptime'].grid(row=4, column=10, padx=20)
 
-        continuityTkinterObjs['RampDownTimeLabel'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['RampDownTimeLabel'].grid(row=5, column=9, padx=20)
-        continuityTkinterObjs['RampDownTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        continuityTkinterObjs['RampDownTime'].set(continuitySettings['ramp down time'])
-        continuityTkinterObjs['RampDownTime'].grid(row=5, column=10, padx=20)
+        continuityTkinterObjsLabel['rampdowntime'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['rampdowntime'].grid(row=5, column=9, padx=20)
+        continuityTkinterObjs['rampdowntime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        continuityTkinterObjs['rampdowntime'].set(continuitySettings['rampdowntime'])
+        continuityTkinterObjs['rampdowntime'].grid(row=5, column=10, padx=20)
 
-        continuityTkinterObjs['DwellTimeLabel'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['DwellTimeLabel'].grid(row=6, column=9, padx=20)
-        continuityTkinterObjs['DwellTime'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
-        continuityTkinterObjs['DwellTime'].set(continuitySettings['dwell time'])
-        continuityTkinterObjs['DwellTime'].grid(row=6, column=10, padx=20)
+        continuityTkinterObjsLabel['dwelltime'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['dwelltime'].grid(row=6, column=9, padx=20)
+        continuityTkinterObjs['dwelltime'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        continuityTkinterObjs['dwelltime'].set(continuitySettings['dwelltime'])
+        continuityTkinterObjs['dwelltime'].grid(row=6, column=10, padx=20)
 
-        continuityTkinterObjs['ArcSenseLabel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['ArcSenseLabel'].grid(row=7, column=9, padx=20)
-        continuityTkinterObjs['ArcSense'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
-        continuityTkinterObjs['ArcSense'].set(continuitySettings['arcsense level'])
-        continuityTkinterObjs['ArcSense'].grid(row=7, column=10, padx=20)
+        continuityTkinterObjsLabel['arcsenselevel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['arcsenselevel'].grid(row=7, column=9, padx=20)
+        continuityTkinterObjs['arcsenselevel'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        continuityTkinterObjs['arcsenselevel'].set(continuitySettings['arcsenselevel'])
+        continuityTkinterObjs['arcsenselevel'].grid(row=7, column=10, padx=20)
 
         def print_value():  # Have to have command parameter in radio buttons or default value doesn't select properly. Possible tkinter bug
-            print("Arc Detection:", continuityTkinterObjs['ArcDetectionBool'].get())
-        continuityTkinterObjs['ArcDetectionBool'] = tk.BooleanVar(value=continuitySettings['arc detection'])
+            print("Arc Detection:", continuityArcDetectionBool.get())
 
-        continuityTkinterObjs['ArcDetectionLabel'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['ArcDetectionLabel'].grid(row=8, column=9, padx=20)
-        continuityTkinterObjs['ArcDetectionRadioTrue'] = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=continuityTkinterObjs['ArcDetectionBool'], command=print_value)
-        continuityTkinterObjs['ArcDetectionRadioTrue'].grid(row=8, column=10, padx=20)
-        continuityTkinterObjs['ArcDetectionRadioFalse'] = ttk.Radiobutton(adminWindow, text='No', value=False, variable=continuityTkinterObjs['ArcDetectionBool'], command=print_value)
-        continuityTkinterObjs['ArcDetectionRadioFalse'].grid(row=8, column=11, padx=20)
+        global continuityArcDetectionBool
+        continuityArcDetectionBool = tk.BooleanVar(value=continuitySettings['arcdetection'])
 
-        continuityTkinterObjs['FrequencyLabel'] = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['FrequencyLabel'].grid(row=9, column=9, padx=20)
-        continuityTkinterObjs['Frequency'] = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
-        continuityTkinterObjs['Frequency'].set(continuitySettings['frequency'])
-        continuityTkinterObjs['Frequency'].grid(row=9, column=10, padx=20)
+        continuityTkinterObjsLabel['arcdetection'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['arcdetection'].grid(row=8, column=9, padx=20)
+        continuityArcDetectionRadioTrue = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=continuityArcDetectionBool, command=print_value)
+        continuityArcDetectionRadioTrue.grid(row=8, column=10, padx=20)
+        continuityArcDetectionRadioFalse = ttk.Radiobutton(adminWindow, text='No', value=False, variable=continuityArcDetectionBool, command=print_value)
+        continuityArcDetectionRadioFalse.grid(row=8, column=11, padx=20)
 
-        continuityTkinterObjs['HighLimitResistanceLabel'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['HighLimitResistanceLabel'].grid(row=10, column=9, padx=20)
-        continuityTkinterObjs['HighLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        continuityTkinterObjs['HighLimitResistance'].set(continuitySettings['high limit resistance'])
-        continuityTkinterObjs['HighLimitResistance'].grid(row=10, column=10, padx=20)
+        continuityTkinterObjsLabel['frequency'] = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['frequency'].grid(row=9, column=9, padx=20)
+        continuityTkinterObjs['frequency'] = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
+        continuityTkinterObjs['frequency'].set(continuitySettings['frequency'])
+        continuityTkinterObjs['frequency'].grid(row=9, column=10, padx=20)
 
-        continuityTkinterObjs['LowLimitResistanceLabel'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['LowLimitResistanceLabel'].grid(row=11, column=9, padx=20)
-        continuityTkinterObjs['LowLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        continuityTkinterObjs['LowLimitResistance'].set(continuitySettings['low limit resistance'])
-        continuityTkinterObjs['LowLimitResistance'].grid(row=11, column=10, padx=20)
+        continuityTkinterObjsLabel['highlimitresistance'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['highlimitresistance'].grid(row=10, column=9, padx=20)
+        continuityTkinterObjs['highlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        continuityTkinterObjs['highlimitresistance'].set(continuitySettings['highlimitresistance'])
+        continuityTkinterObjs['highlimitresistance'].grid(row=10, column=10, padx=20)
 
-        continuityTkinterObjs['ResistanceOffsetLabel'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjs['ResistanceOffsetLabel'].grid(row=12, column=9, padx=20)
-        continuityTkinterObjs['ResistanceOffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
-        continuityTkinterObjs['ResistanceOffset'].set(continuitySettings['resistance offset'])
-        continuityTkinterObjs['ResistanceOffset'].grid(row=12, column=10, padx=20)
+        continuityTkinterObjsLabel['lowlimitresistance'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['lowlimitresistance'].grid(row=11, column=9, padx=20)
+        continuityTkinterObjs['lowlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        continuityTkinterObjs['lowlimitresistance'].set(continuitySettings['lowlimitresistance'])
+        continuityTkinterObjs['lowlimitresistance'].grid(row=11, column=10, padx=20)
+
+        continuityTkinterObjsLabel['resistanceoffset'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
+        continuityTkinterObjsLabel['resistanceoffset'].grid(row=12, column=9, padx=20)
+        continuityTkinterObjs['resistanceoffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
+        continuityTkinterObjs['resistanceoffset'].set(continuitySettings['resistanceoffset'])
+        continuityTkinterObjs['resistanceoffset'].grid(row=12, column=10, padx=20)
 
         # Hypot Settings
 
-        hypotTkinterObjs['HeaderLabel'] = tk.Label(adminWindow, text='Hypot Settings', font=helv, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['HeaderLabel'].grid(row=0, column=13, columnspan=2, padx=20)
+        hypotTkinterObjsLabel['header'] = tk.Label(adminWindow, text='Hypot Settings', font=helv, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['header'].grid(row=0, column=13, columnspan=2, padx=20)
 
-        hypotTkinterObjs['VoltLabel'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['VoltLabel'].grid(row=1, column=12, padx=20)
-        hypotTkinterObjs['Volt'] = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
-        hypotTkinterObjs['Volt'].set(hypotSettings['voltage'])
-        hypotTkinterObjs['Volt'].grid(row=1, column=13, padx=20)
+        hypotTkinterObjsLabel['voltage'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['voltage'].grid(row=1, column=12, padx=20)
+        hypotTkinterObjs['voltage'] = ttk.Spinbox(adminWindow, width=10, from_=1000, to=1400, increment=10)
+        hypotTkinterObjs['voltage'].set(hypotSettings['voltage'])
+        hypotTkinterObjs['voltage'].grid(row=1, column=13, padx=20)
 
-        hypotTkinterObjs['HighLimitLabel'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['HighLimitLabel'].grid(row=2, column=12, padx=20)
-        hypotTkinterObjs['HighLimit'] = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
-        hypotTkinterObjs['HighLimit'].set(hypotSettings['current high limit'])
-        hypotTkinterObjs['HighLimit'].grid(row=2, column=13, padx=20)
+        hypotTkinterObjsLabel['currenthighlimit'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['currenthighlimit'].grid(row=2, column=12, padx=20)
+        hypotTkinterObjs['currenthighlimit'] = ttk.Spinbox(adminWindow, width=10, from_=10, to=50, increment=1)
+        hypotTkinterObjs['currenthighlimit'].set(hypotSettings['currenthighlimit'])
+        hypotTkinterObjs['currenthighlimit'].grid(row=2, column=13, padx=20)
 
-        hypotTkinterObjs['LowLimitLabel'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['LowLimitLabel'].grid(row=3, column=12, padx=20)
-        hypotTkinterObjs['LowLimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=12, increment=1)
-        hypotTkinterObjs['LowLimit'].set(hypotSettings['current low limit'])
-        hypotTkinterObjs['LowLimit'].grid(row=3, column=13, padx=20)
+        hypotTkinterObjsLabel['currentlowlimit'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['currentlowlimit'].grid(row=3, column=12, padx=20)
+        hypotTkinterObjs['currentlowlimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=12, increment=1)
+        hypotTkinterObjs['currentlowlimit'].set(hypotSettings['currentlowlimit'])
+        hypotTkinterObjs['currentlowlimit'].grid(row=3, column=13, padx=20)
 
-        hypotTkinterObjs['RampUpTimeLabel'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['RampUpTimeLabel'].grid(row=4, column=12, padx=20)
-        hypotTkinterObjs['RampUpTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        hypotTkinterObjs['RampUpTime'].set(hypotSettings['ramp up time'])
-        hypotTkinterObjs['RampUpTime'].grid(row=4, column=13, padx=20)
+        hypotTkinterObjsLabel['rampuptime'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['rampuptime'].grid(row=4, column=12, padx=20)
+        hypotTkinterObjs['rampuptime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['rampuptime'].set(hypotSettings['rampuptime'])
+        hypotTkinterObjs['rampuptime'].grid(row=4, column=13, padx=20)
 
-        hypotTkinterObjs['RampDownTimeLabel'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['RampDownTimeLabel'].grid(row=5, column=12, padx=20)
-        hypotTkinterObjs['RampDownTime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        hypotTkinterObjs['RampDownTime'].set(hypotSettings['ramp down time'])
-        hypotTkinterObjs['RampDownTime'].grid(row=5, column=13, padx=20)
+        hypotTkinterObjsLabel['rampdowntime'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['rampdowntime'].grid(row=5, column=12, padx=20)
+        hypotTkinterObjs['rampdowntime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['rampdowntime'].set(hypotSettings['rampdowntime'])
+        hypotTkinterObjs['rampdowntime'].grid(row=5, column=13, padx=20)
 
-        hypotTkinterObjs['DwellTimeLabel'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['DwellTimeLabel'].grid(row=6, column=12, padx=20)
-        hypotTkinterObjs['DwellTime'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
-        hypotTkinterObjs['DwellTime'].set(hypotSettings['dwell time'])
-        hypotTkinterObjs['DwellTime'].grid(row=6, column=13, padx=20)
+        hypotTkinterObjsLabel['dwelltime'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['dwelltime'].grid(row=6, column=12, padx=20)
+        hypotTkinterObjs['dwelltime'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        hypotTkinterObjs['dwelltime'].set(hypotSettings['dwelltime'])
+        hypotTkinterObjs['dwelltime'].grid(row=6, column=13, padx=20)
 
-        hypotTkinterObjs['ArcSenseLabel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['ArcSenseLabel'].grid(row=7, column=12, padx=20)
-        hypotTkinterObjs['ArcSense'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
-        hypotTkinterObjs['ArcSense'].set(hypotSettings['arcsense level'])
-        hypotTkinterObjs['ArcSense'].grid(row=7, column=13, padx=20)
+        hypotTkinterObjsLabel['arcsenselevel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['arcsenselevel'].grid(row=7, column=12, padx=20)
+        hypotTkinterObjs['arcsenselevel'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=5, increment=0.1)
+        hypotTkinterObjs['arcsenselevel'].set(hypotSettings['arcsenselevel'])
+        hypotTkinterObjs['arcsenselevel'].grid(row=7, column=13, padx=20)
 
         def print_value():  # Have to have command parameter in radio buttons or default value doesn't select properly. Possible tkinter bug
-            print("Arc Detection:", hypotTkinterObjs['ArcDetectionBool'].get())
+            print("Arc Detection:", hypotArcDetectionBool.get())
 
-        hypotTkinterObjs['ArcDetectionBool'] = tk.BooleanVar(value=hypotSettings['arc detection'])
+        global hypotArcDetectionBool
+        hypotArcDetectionBool = tk.BooleanVar(value=hypotSettings['arcdetection'])
 
-        hypotTkinterObjs['ArcDetectionLabel'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['ArcDetectionLabel'].grid(row=8, column=12, padx=20)
-        hypotTkinterObjs['ArcDetectionRadioTrue'] = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=hypotTkinterObjs['ArcDetectionBool'], command=print_value)
-        hypotTkinterObjs['ArcDetectionRadioTrue'].grid(row=8, column=13, padx=20)
-        hypotTkinterObjs['ArcDetectionRadioFalse'] = ttk.Radiobutton(adminWindow, text='No', value=False, variable=hypotTkinterObjs['ArcDetectionBool'], command=print_value)
-        hypotTkinterObjs['ArcDetectionRadioFalse'].grid(row=8, column=14, padx=20)
+        hypotTkinterObjsLabel['arcdetection'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['arcdetection'].grid(row=8, column=12, padx=20)
+        hypotArcDetectionRadioTrue = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=hypotArcDetectionBool, command=print_value)
+        hypotArcDetectionRadioTrue.grid(row=8, column=13, padx=20)
+        hypotArcDetectionRadioFalse = ttk.Radiobutton(adminWindow, text='No', value=False, variable=hypotArcDetectionBool, command=print_value)
+        hypotArcDetectionRadioFalse.grid(row=8, column=14, padx=20)
 
-        hypotTkinterObjs['FrequencyLabel'] = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['FrequencyLabel'].grid(row=9, column=12, padx=20)
-        hypotTkinterObjs['Frequency'] = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
-        hypotTkinterObjs['Frequency'].set(hypotSettings['frequency'])
-        hypotTkinterObjs['Frequency'].grid(row=9, column=13, padx=20)
+        hypotTkinterObjsLabel['frequency'] = tk.Label(adminWindow, text='Frequency', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['frequency'].grid(row=9, column=12, padx=20)
+        hypotTkinterObjs['frequency'] = ttk.Spinbox(adminWindow, width=10, from_=0.2, to=5, increment=0.1)
+        hypotTkinterObjs['frequency'].set(hypotSettings['frequency'])
+        hypotTkinterObjs['frequency'].grid(row=9, column=13, padx=20)
 
-        hypotTkinterObjs['HighLimitResistanceLabel'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['HighLimitResistanceLabel'].grid(row=10, column=12, padx=20)
-        hypotTkinterObjs['HighLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        hypotTkinterObjs['HighLimitResistance'].set(hypotSettings['high limit resistance'])
-        hypotTkinterObjs['HighLimitResistance'].grid(row=10, column=13, padx=20)
+        hypotTkinterObjsLabel['highlimitresistance'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['highlimitresistance'].grid(row=10, column=12, padx=20)
+        hypotTkinterObjs['highlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['highlimitresistance'].set(hypotSettings['highlimitresistance'])
+        hypotTkinterObjs['highlimitresistance'].grid(row=10, column=13, padx=20)
 
-        hypotTkinterObjs['LowLimitResistanceLabel'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['LowLimitResistanceLabel'].grid(row=11, column=12, padx=20)
-        hypotTkinterObjs['LowLimitResistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
-        hypotTkinterObjs['LowLimitResistance'].set(hypotSettings['low limit resistance'])
-        hypotTkinterObjs['LowLimitResistance'].grid(row=11, column=13, padx=20)
+        hypotTkinterObjsLabel['lowlimitresistance'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['lowlimitresistance'].grid(row=11, column=12, padx=20)
+        hypotTkinterObjs['lowlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=10, increment=0.1)
+        hypotTkinterObjs['lowlimitresistance'].set(hypotSettings['lowlimitresistance'])
+        hypotTkinterObjs['lowlimitresistance'].grid(row=11, column=13, padx=20)
 
-        hypotTkinterObjs['ResistanceOffsetLabel'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
-        hypotTkinterObjs['ResistanceOffsetLabel'].grid(row=12, column=12, padx=20)
-        hypotTkinterObjs['ResistanceOffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
-        hypotTkinterObjs['ResistanceOffset'].set(hypotSettings['resistance offset'])
-        hypotTkinterObjs['ResistanceOffset'].grid(row=12, column=13, padx=20)
+        hypotTkinterObjsLabel['resistanceoffset'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
+        hypotTkinterObjsLabel['resistanceoffset'].grid(row=12, column=12, padx=20)
+        hypotTkinterObjs['resistanceoffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5, increment=0.1)
+        hypotTkinterObjs['resistanceoffset'].set(hypotSettings['resistanceoffset'])
+        hypotTkinterObjs['resistanceoffset'].grid(row=12, column=13, padx=20)
 
     else: # Wrong password
         pass
@@ -835,8 +871,8 @@ helvmedium = tkfont.Font(family='Helvetica', size=15, weight='bold')
 helvsmall = tkfont.Font(family='Helvetica', size=10, weight='bold')
 
 # UI Setup
-startButton = tk.Button(root, text='START', command=startstart, bg='#000000', fg=textColor, relief='flat', width=35,
-                        height=20, font=helv)
+startButton = tk.Button(root, text='START', command=startstart, bg='#000000', fg=textColor, relief='flat', width=20,
+                        height=12, font=helv)
 startButton.pack(side=LEFT, padx=20)
 stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18,
                        height=3, font=helvmedium)
