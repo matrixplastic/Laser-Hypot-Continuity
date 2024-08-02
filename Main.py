@@ -52,11 +52,11 @@ from comtypes.gen import ARI38XXLib
 hypotSerial1 = "AQ03JGPEA"
 sc6540Serial1 = "B0007EEKA"
 sc6540Serial2 = "B0007BEKA"
-# hypotSerial2 = "YOUR_SERIAL_NUMBER"
+hypotSerial2 = "A107A3OCA"
 # Setup Laser Connectivity
 laser = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
 try:
-    laser.connect(('127.0.0.1', 50000))  # IP and Port number for laser
+    laser.connect(('10.10.0.167', 50000))  # IP and Port number for laser
 except Exception as e:
     print(f'Connection to Laser Marker failed: {e}')
     logger.error(f'Connection to Laser Marker failed: {e}')
@@ -132,7 +132,7 @@ def find_com_port_by_serial_number(targetSerialNumber):
     ports = serial.tools.list_ports.comports()
     for port in ports:
         # Print all device details for debugging purposes
-        # print(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
+        print(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
         if targetSerialNumber in port.hwid:
             logger.info('Serial number: ' + targetSerialNumber + ' Located at: ' + port.device)
             return port.device
@@ -148,8 +148,8 @@ def concat_port(comPort):
 hypotComPort1 = find_com_port_by_serial_number(hypotSerial1)
 portNumHy1 = concat_port(hypotComPort1)
 
-# hypotComPort2 = find_com_port_by_serial_number(hypotSerial2)
-# portNumHy2 = cachevar(hypotComPort2)
+hypotComPort2 = find_com_port_by_serial_number(hypotSerial2)
+portNumHy2 = concat_port(hypotComPort2)
 
 sc6540ComPort1 = find_com_port_by_serial_number(sc6540Serial1)
 portNumSC1 = concat_port(sc6540ComPort1)
