@@ -140,8 +140,11 @@ def find_com_port_by_serial_number(targetSerialNumber):
 
 
 def concat_port(comPort):
-    return 'ASRL' + comPort.replace("COM", '') + '::INSTR'
-
+    try:
+        return 'ASRL' + comPort.replace("COM", '') + '::INSTR'
+    except Exception as ex:
+        logger.error(f'Concat port error with {comPort}: {ex}')
+        print(f'Concat port error with {comPort}: {ex}')
 
 # Avoid using COM# because windows can mix it up
 
