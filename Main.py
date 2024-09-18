@@ -1,4 +1,6 @@
 import time
+import tkinter
+
 import comtypes.client as cc
 from tkinter import *
 import tkinter as tk
@@ -15,6 +17,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 
 # Setup Logging
+print('Setting up Logging')
 scriptDir = os.path.dirname(__file__)  # Absolute dir the script is in
 logname = 'logs/LaserHypotCont.log'
 absFilePath = os.path.join(scriptDir, logname)
@@ -32,6 +35,7 @@ try:
 except Exception as e:
     print(f'Error creating new Log file: {e}')
 
+print('Setting up Settings File')
 # Setup Settings File
 config = configparser.ConfigParser()
 config['Run Cavity'] = {}
@@ -42,6 +46,7 @@ config['Continuity'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
 
+print('Setting up Drivers')
 # Driver Variables
 cc.GetModule('SC6540.dll')
 from comtypes.gen import SC6540Lib
@@ -174,8 +179,8 @@ except Exception as e:
 
 try:
     pass
-    # hypotDriver2 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
-    # hypotDriver2.Initialize('portNumHy2, True, False, 'DriverSetup=BaudRate=38400')
+    hypotDriver2 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
+    hypotDriver2.Initialize(portNumHy2, True, False, 'DriverSetup=BaudRate=38400')
 except Exception as e:
     print(f'Connection to Hypot2 failed: {e}')
     logger.error(f'Connection to Hypot2 failed: {e}')
@@ -867,32 +872,35 @@ for y in range(1, 11):
 get_settings()
 
 #       Starting UI Setup
-# Fonts
+# Fonts and Styles
 helv = tkfont.Font(family='Helvetica', size=20, weight='bold')
 helvUnderline = tkfont.Font(family='Helvetica', size=20, weight='bold', underline=True)
 helvmedium = tkfont.Font(family='Helvetica', size=15, weight='bold')
 helvsmall = tkfont.Font(family='Helvetica', size=10, weight='bold')
 
 # UI Setup
-startButton = tk.Button(root, text='START', command=startstart, bg='#000000', fg=textColor, relief='flat', width=20,
-                        height=12, font=helv)
-startButton.pack(side=LEFT, padx=20)
-stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18,
-                       height=3, font=helvmedium)
+startButton = tk.Button(root, text='START', command=startstart, bg='#000000', fg=textColor, relief='flat', width=20, height=12, font=helv)
+startButton.place(x=50, y=400)
+stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18, height=3, font=helvmedium)
 stopButton.place(x=850, y=875)
 root.protocol("WM_DELETE_WINDOW", on_stop_button_clicked)  # Gracefully shuts down program if window closed
 
-totalProgressText = tk.Label(root, text='Total Progress', fg=textColor, bg=textBackgroundColor, font=helv)
-totalProgressText.pack(side=tk.TOP, pady=10)
-totalProgressBar = ttk.Progressbar(root, length=360, maximum=100)
-totalProgressBar.pack(side=tk.TOP, ipady=6, pady=7)
-totalProgressPercentage = tk.Label(root, text='0%', fg='Black', bg='#E6E6E6', font=helvmedium)
+progressCanvas = Canvas(root, width=400, height=300, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
+progressCanvas.place(x=1000, y=10)
+progressCanvas.create_rectangle(0, 0, 0, 0, fill='white')
+
+totalProgressText = tk.Label(progressCanvas, text='Total Progress', fg=textColor, bg=canvasColor, font=helv)
+totalProgressText.pack(side=TOP)
+totalProgressBar = ttk.Progressbar(progressCanvas, length=360, maximum=100)
+totalProgressBar.pack(side=TOP)
+totalProgressPercentage = tk.Label(progressCanvas, text='0%', fg='Black', bg='#E6E6E6', font=helvmedium)
 totalProgressPercentage.place(in_=totalProgressBar, relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-mainFrame = ttk.Frame(root, padding=(5, 5, 5, 5))
-mainFrame.pack(side=tk.TOP)
-canvas = Canvas(mainFrame, width=650, height=700, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
-canvas.pack(fill=tk.BOTH, expand=True)
+rectangleFrame = ttk.Frame(root, padding=(5, 5, 5, 5), width=670, height=720)
+rectangleFrame.place(x=1000, y=110)
+canvas = Canvas(rectangleFrame, width=650, height=700, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
+canvas.place(x=0, y=0)
+
 
 # Create the grid of rectangles
 create_rectangle_grid(rows=5, columns=2, rectWidth=300, rectHeight=100, padding=50, canv=canvas)
