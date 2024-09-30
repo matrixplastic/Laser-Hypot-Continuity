@@ -17,6 +17,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 
 # Setup Logging
+errors = []
 print('Setting up Logging')
 scriptDir = os.path.dirname(__file__)  # Absolute dir the script is in
 logname = 'logs/LaserHypotCont.log'
@@ -34,6 +35,7 @@ try:
 
 except Exception as e:
     print(f'Error creating new Log file: {e}')
+    errors.append(f'Error creating new Log file: {e}')
 
 print('Setting up Settings File')
 # Setup Settings File
@@ -65,6 +67,7 @@ try:
 except Exception as e:
     print(f'Connection to Laser Marker failed: {e}')
     logger.error(f'Connection to Laser Marker failed: {e}')
+    errors.append(f'Connection to Laser Marker failed')
 
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
@@ -176,6 +179,7 @@ try:
 except Exception as e:
     print(f'Connection to Hypot1 failed: {e}')
     logger.error(f'Connection to Hypot1 failed: {e}')
+    errors.append('Connection to Hypot1 failed')
 
 try:
     pass
@@ -184,6 +188,7 @@ try:
 except Exception as e:
     print(f'Connection to Hypot2 failed: {e}')
     logger.error(f'Connection to Hypot2 failed: {e}')
+    errors.append('Connection to Hypot2 failed')
 
 try:
     sc6540Driver1 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
@@ -192,7 +197,7 @@ try:
 except Exception as e:
     print(f'Connection to SC6540 Switch1 failed: {e}')
     logger.error(f'Connection to SC6540 Switch1 failed: {e}')
-
+    errors.append('Connection to SC6540 Switch1 failed')
 try:
     sc6540Driver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
     sc6540OptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
@@ -200,6 +205,7 @@ try:
 except Exception as e:
     print(f'Connection to SC6540 Switch2 failed: {e}')
     logger.error(f'Connection to SC6540 Switch2 failed: {e}')
+    errors.append('Connection to SC6540 Switch2 failed')
 
 
 def get_settings():
@@ -842,25 +848,32 @@ def update_colors(canv):
     for x in range(1, 11):
         if laserEnabled['cavity' + str(x)].get() == 0 and runCavity['cavity' + str(x)].get() == 0:
             change_rectangle_color(cavNum=x, color=disabledColor, canv=canv)
-            change_rectangle_text(x, text="Fully Disabled")
+            update_rectangle_text(x, text="Fully Disabled")
         elif runCavity['cavity' + str(x)].get() == 0:
             change_rectangle_color(cavNum=x, color=halfDisabledColor, canv=canv)
-            change_rectangle_text(x, text="Hypot Disabled")
+            update_rectangle_text(x, text="Hypot Disabled")
         elif laserEnabled['cavity' + str(x)].get() == 0:
             change_rectangle_color(cavNum=x, color=halfDisabledColor, canv=canv)
-            change_rectangle_text(cavNum=x, text="Laser Disabled")
+            update_rectangle_text(cavNum=x, text="Laser Disabled")
         else:
             change_rectangle_color(cavNum=x, color=enabledColor, canv=canv)
-            change_rectangle_text(cavNum=x, text="Enabled")
+            update_rectangle_text(cavNum=x, text="Enabled")
 
 
 # Function to change the status text of a rectangle based on its cavity number
-def change_rectangle_text(cavNum, text):
+def update_rectangle_text(cavNum, text):
     if cavNum in statusText:
         canvas.itemconfig(statusText[cavNum], text=text)
     else:
         print(f"No rectangle found at position {cavNum}")
 
+def update_error_text():
+    if not errors:
+        errorString = 'All Hardware Connected'
+        errorText.config(text=errorString, fg='green')
+    else:
+        errorString = '\n'.join(errors)
+        errorText.config(text=errorString, fg='red')
 
 # Setting values to make sure theyre populated when referenced, or if no settings file found initially
 for y in range(1, 11):
@@ -901,6 +914,14 @@ rectangleFrame.place(x=1000, y=110)
 canvas = Canvas(rectangleFrame, width=650, height=700, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
 canvas.place(x=0, y=0)
 
+errorFrame = ttk.Frame(root, padding=(5, 5, 5, 5), width=520, height=270)
+errorFrame.place(x=100, y=50)
+errorCanvas = Canvas(errorFrame, width=500, height=250, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
+errorCanvas.place(x=0, y=0)
+errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helv)
+errorText.place(x=0, y=0)
+update_error_text()
+
 
 # Create the grid of rectangles
 create_rectangle_grid(rows=5, columns=2, rectWidth=300, rectHeight=100, padding=50, canv=canvas)
@@ -911,8 +932,7 @@ adminLabel.place(x=1525, y=850)
 adminText = tk.StringVar()
 adminTextbox = ttk.Entry(root, show='*', width=25)
 adminTextbox.place(x=1550, y=900)
-adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000000', fg=textColor, relief='flat',
-                              width=9, height=2, font=helvsmall)
+adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000000', fg=textColor, relief='flat', width=9, height=2, font=helvsmall)
 adminSubmitButton.place(x=1550, y=925)
 
 try:
