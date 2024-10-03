@@ -56,10 +56,10 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotSerial1 = "AQ03JGPEA"
+hypotSerial1 = "A107A3OCA"
 sc6540Serial1 = "B0007EEKA"
 sc6540Serial2 = "B0007BEKA"
-hypotSerial2 = "A107A3OCA"
+hypotSerial2 = "AQ03JGPEA"
 # Setup Laser Connectivity
 laser = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
 try:
@@ -82,30 +82,30 @@ defaultHypotSettings = {
     'currenthighlimit': 20,  # Current High Limit
     'currentlowlimit': 0,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'rampdowntime': 2,  # Dewll time in seconds
-    'dwelltime': 0,  # RampDownTime in seconds
+    'dwelltime': 2,  # RampDownTime in seconds
+    'rampdowntime': 0,  # Dewll time in seconds
     'arcsenselevel': 5,  # ArcSense level
     'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': False,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
     'lowlimitresistance': 0,  # Low limit of the continuity resistance
-    'resistanceoffset': .5  # Continuity resistance offset
+    'resistanceoffset': 0  # Continuity resistance offset
 }
 defaultContinuitySettings = {
     'voltage': 1240,  # AC Voltage
     'currenthighlimit': 20,  # Current High Limit
     'currentlowlimit': 0,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'rampdowntime': 2,  # Dewll time in seconds
-    'dwelltime': 0,  # RampDownTime in seconds
+    'dwelltime': 2,  # RampDownTime in seconds
+    'rampdowntime': 0,  # Dewll time in seconds
     'arcsenselevel': 5,  # ArcSense level
     'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': True,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
     'lowlimitresistance': 0,  # Low limit of the continuity resistance
-    'resistanceoffset': .5  # Continuity resistance offset
+    'resistanceoffset': 0  # Continuity resistance offset
 }
 
 # Admin Panel Settings Variables
@@ -210,6 +210,7 @@ except Exception as e:
 
 def get_settings():
     config.read('settings.ini')
+    global errors
     global adminPassword
     try:
         adminPassword = config['Admin']['Password']
@@ -223,10 +224,9 @@ def get_settings():
             runCavity[cav] = tk.IntVar(value=int(config['Run Cavity'][cav]))
             laserEnabled[cav] = tk.IntVar(value=int(config['Laser Enabled'][cav]))
         except Exception as ex:
-            logger.error(f'Error Getting settings file: {ex}')
+            logger.error(f"Error reading Settings.ini file, creating new enabled variables. {ex}")
             runCavity[cav] = tk.IntVar(value=1)
             laserEnabled[cav] = tk.IntVar(value=1)
-
     # Hypot
     for key, defaultValue in defaultHypotSettings.items():
         # Make sure values exist
@@ -236,35 +236,39 @@ def get_settings():
             value = config['Hypot'][key]
 
         # Convert to their proper types so the AddACWTest can parse them properly
-        if value == 'True':
-            hypotSettings[key] = True
-        elif value == 'False':
-            hypotSettings[key] = False
-        else:
-            try:
+        try:
+            if key in ('arcdetection', 'continuitytest'):
+                hypotSettings[key] = bool(value)
+            elif key in ('voltage', 'currenthighlimit', 'currentlowlimit', 'arcsenselevel', 'frequency'):
                 hypotSettings[key] = int(value)
-            except:
+            elif key in ('rampuptime', 'rampdowntime', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
                 hypotSettings[key] = float(value)
+        except Exception as ex:
+            logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
+            print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
+            errors.append("Error reading Settings.ini file! Delete it, and restart program.")
+
 
     # Continuity
     for key, defaultValue in defaultContinuitySettings.items():
         # Make sure values exist
-
         if key not in config['Continuity']:
             value = defaultValue
         else:
             value = config['Continuity'][key]
 
         # Convert to their proper types so the AddACWTest can parse them properly
-        if value == 'True':
-            continuitySettings[key] = True
-        elif value == 'False':
-            continuitySettings[key] = False
-        else:
-            try:
+        try:
+            if key in ('arcdetection', 'continuitytest'):
+                continuitySettings[key] = bool(value)
+            elif key in ('voltage', 'currenthighlimit', 'currentlowlimit', 'arcsenselevel', 'frequency'):
                 continuitySettings[key] = int(value)
-            except:
+            elif key in ('rampuptime', 'rampdowntime', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
                 continuitySettings[key] = float(value)
+        except Exception as ex:
+            logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
+            print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
+            errors.append("Error reading Settings.ini file! Delete it, and restart program.")
 
 def save_settings():
     # Write the config object to a file
@@ -484,7 +488,7 @@ def hypot_execution(continuityTest, cavityNum):
     try:
         hypotDriver.Files.Create(1, 'IviTest')
     except Exception as ex:
-        logger.error('Exception occured at Hypot execution: ' + str(ex))
+        logger.error('Missing Test File creating a new one, or Issue: ' + str(ex))
         files = hypotDriver.Files.TotalFiles
         for h in range(1, files + 1):
             if 'IviTest' in hypotDriver.Files.QueryFileName(h):
@@ -493,17 +497,48 @@ def hypot_execution(continuityTest, cavityNum):
                 break
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
-    if (continuityTest):
-        hypotDriver.Steps.AddACWTest(*tuple(continuitySettings.values()))  # * is the unpacking operator to separate tuple into parameters
-    else:
-        hypotDriver.Steps.AddACWTest(*tuple(hypotSettings.values()))  # * is the unpacking operator to separate tuple into parameters
+    try:
+        if (continuityTest):
+            # Add an ACW step and then edit parameters
+            hypotDriver.Steps.AddACWTestWithDefaults()
+            hypotDriver.Parameters.Voltage = continuitySettings['voltage']
+            hypotDriver.Parameters.HighLimit = continuitySettings['currenthighlimit']
+            hypotDriver.Parameters.LowLimit = continuitySettings['currentlowlimit']
+            hypotDriver.Parameters.RampUp = continuitySettings['rampuptime']
+            hypotDriver.Parameters.Dwell = continuitySettings['dwelltime']
+            hypotDriver.Parameters.RampDown = continuitySettings['rampdowntime']
+            hypotDriver.Parameters.ArcSense = continuitySettings['arcsenselevel']
+            hypotDriver.Parameters.ArcDetectEnabled = continuitySettings['arcdetection']
+            hypotDriver.Parameters.Frequency = continuitySettings['frequency']
+            hypotDriver.Parameters.ContinuityEnabled = continuitySettings['continuitytest']
+            hypotDriver.Parameters.ContHiLimit = continuitySettings['highlimitresistance']
+            hypotDriver.Parameters.ContLoLimit = continuitySettings['lowlimitresistance']
+            hypotDriver.Parameters.ContOffset = continuitySettings['resistanceoffset']
+        else:
+            hypotDriver.Steps.AddACWTestWithDefaults()
+            hypotDriver.Parameters.Voltage = hypotSettings['voltage']
+            hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
+            hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
+            hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
+            hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
+            hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
+            hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
+            hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
+            hypotDriver.Parameters.Frequency = hypotSettings['frequency']
+            hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
+            hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
+            hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
+            hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
 
-    hypotDriver.Files.Save()
-    # Start test
-    hypotDriver.Execution.Execute()
-    # Output Results
-    read_hypot(continuityTest=continuityTest, hypotDriver=hypotDriver, cavityNum=cavityNum)
-    # Reset test and close connection
+        hypotDriver.Files.Save()
+        # Start test
+        hypotDriver.Execution.Execute()
+        # Output Results
+        read_hypot(continuityTest=continuityTest, hypotDriver=hypotDriver, cavityNum=cavityNum)
+        # Reset test and close connection
+    except Exception as ex:
+        logger.error('Exception occured at Hypot execution: ' + str(ex))
+        errors.append('Exception occured at Hypot execution: ' + str(ex))
     hypotDriver.Execution.Abort()
 
     if (continuityTest):
@@ -918,7 +953,7 @@ errorFrame = ttk.Frame(root, padding=(5, 5, 5, 5), width=520, height=270)
 errorFrame.place(x=100, y=50)
 errorCanvas = Canvas(errorFrame, width=500, height=250, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
 errorCanvas.place(x=0, y=0)
-errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helv)
+errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helvmedium)
 errorText.place(x=0, y=0)
 update_error_text()
 
