@@ -428,15 +428,13 @@ def continuity_setup(cavitynum):
     else:  # Second sc6540 switch and hypot
         sc6540Driver = sc6540Driver2
     # Enable Continuity (High) channels
-    sc6540Driver.Execution.ConfigureContinuityChannels({8})
+    sc6540Driver.Execution.ConfigureContinuityChannels({16})
     # After the multiplexer was configured, the safety or ground bond tester could start output for ground bond test on those connections.
     time.sleep(1)
 
     # Enable Return (Low) channels
-    if cavitynum == 4 or cavitynum == 9:
+    if cavitynum == 5 or cavitynum == 10:
         rtnChannel = 10  # Module B channel 1
-    elif cavitynum == 5 or cavitynum == 10:
-        rtnChannel = 12  # Module B channel 3
     else:
         rtnChannel = 2 * cavitynum
     sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
@@ -455,19 +453,15 @@ def hypot_setup(cavitynum):
 
     # Withstand test (ACW, DCW)
     # Enable Withstand (High) channels
-    if cavitynum == 4 or cavitynum == 9:
+    if cavitynum == 5 or cavitynum == 10:
         highChannel = 9  # Module B channel 1
-    elif cavitynum == 5 or cavitynum == 10:
-        highChannel = 11  # Module B channel 3
     else:
         highChannel = 2 * cavitynum - 1
     sc6540Driver.Execution.ConfigureWithstandChannels({highChannel})
 
     # Enable Return (Low) channels
-    if cavitynum == 4 or cavitynum == 9:
+    if cavitynum == 5 or cavitynum == 10:
         rtnChannel = 10  # Module B channel 2
-    elif cavitynum == 5 or cavitynum == 10:
-        rtnChannel = 12  # Module B channel 4
     else:
         rtnChannel = 2 * cavitynum
     sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
