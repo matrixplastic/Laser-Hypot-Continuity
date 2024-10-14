@@ -71,6 +71,7 @@ except Exception as e:
 
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
+faultState = False
 cavityContinuitySuccesses = {}
 cavityHypotSuccesses = {}
 runCavity = {}
@@ -133,7 +134,6 @@ textColor = 'White'
 
 root.configure(bg=backgroundColor)
 # root.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
-faultState = False
 
 
 def find_com_port_by_serial_number(targetSerialNumber):
@@ -169,6 +169,7 @@ sc6540ComPort2 = find_com_port_by_serial_number(sc6540Serial2)
 portNumSC2 = concat_port(sc6540ComPort2)
 
 print(portNumHy1)
+print(portNumHy2)
 print(portNumSC1)
 print(portNumSC2)
 
@@ -246,7 +247,7 @@ def get_settings():
         except Exception as ex:
             logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
-            errors.append("Error reading Settings.ini file! Delete it, and restart program.")
+            errors.append("Error reading Settings.ini! Delete it, restart Program!")
 
 
     # Continuity
@@ -401,6 +402,7 @@ def stop():
         sc6540Driver2.Execution.DisableAllChannels()
         logger.error('Emergency Stop Done!')
         root.quit()
+        root.destroy()
         sys.exit()
     except Exception as ex:
         logger.error(f"Error during emergency stop!: {ex}")
@@ -408,12 +410,14 @@ def stop():
         sc6540Driver2.Execution.DisableAllChannels()
         logger.error('Emergency Stop Done!')
         root.quit()
+        root.destroy()
         sys.exit()
     finally:
         # Ensure that the Tkinter main loop exits cleanly
         logger.error('Hit finally in emergency stop!')
         logger.error('Emergency Stop Done!')
         root.quit()
+        root.destroy()
         sys.exit()
 
 
@@ -533,6 +537,7 @@ def hypot_execution(continuityTest, cavityNum):
     except Exception as ex:
         logger.error('Exception occured at Hypot execution: ' + str(ex))
         errors.append('Exception occured at Hypot execution: ' + str(ex))
+        print('Exception occured at Hypot execution: ' + str(ex))
     hypotDriver.Execution.Abort()
 
     if (continuityTest):
@@ -846,7 +851,9 @@ def admin_panel():
         hypotTkinterObjs['resistanceoffset'].grid(row=12, column=13, padx=20)
 
     else: # Wrong password
-        pass
+        wrongPassLabel = tk.Label(root, text="Wrong Password!")
+        wrongPassLabel.place(x=1550, y=925)
+        root.after(3000, lambda: wrongPassLabel.destroy())  # time in ms
 
 
 # Function to create a grid of rectangles and store references
