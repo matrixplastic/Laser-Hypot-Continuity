@@ -56,10 +56,10 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotSerial1 = "A107A3OCA"
+hypotSerial1 = "AQ03JGPEA"
 sc6540Serial1 = "B0007EEKA"
 sc6540Serial2 = "B0007BEKA"
-hypotSerial2 = "AQ03JGPEA"
+hypotSerial2 = "A107A3OCA"
 # Setup Laser Connectivity
 laser = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
 try:
@@ -429,22 +429,29 @@ def on_stop_button_clicked():
 def continuity_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
         sc6540Driver = sc6540Driver1
+        switchNum = 1
     else:  # Second sc6540 switch and hypot
         sc6540Driver = sc6540Driver2
-    # Enable Continuity (High) channels
-    sc6540Driver.Execution.ConfigureContinuityChannels({16})
+        switchNum = 2
+        cavitynum -= 5 # Reduce value for proper switch port assignments
+
     # After the multiplexer was configured, the safety or ground bond tester could start output for ground bond test on those connections.
     time.sleep(1)
 
     # Enable Return (Low) channels
-    if cavitynum == 5 or cavitynum == 10:
-        rtnChannel = 10  # Module B channel 1
+    if cavitynum == 5:
+        contHighChannel = 10  # Module B channel 1
     else:
-        rtnChannel = 2 * cavitynum
-    sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
+        contHighChannel = 2 * cavitynum
+
+    # Enable Continuity (High) channels
+    sc6540Driver.Execution.ConfigureContinuityChannels({contHighChannel})
+    sc6540Driver.Execution.ConfigureReturnChannels({16})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
     time.sleep(1)
 
+    print(f'switch: {switchNum}')
+    print(f'cont high: {contHighChannel}')
     logger.info('Continuity Setup Done')
     print('Continuity Setup Done')
 
@@ -452,8 +459,11 @@ def continuity_setup(cavitynum):
 def hypot_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
         sc6540Driver = sc6540Driver1
+        switchNum = 1
     else:  # Second sc6540 switch and hypot
         sc6540Driver = sc6540Driver2
+        switchNum = 2
+        cavitynum -= 5 # Reduce value for proper switch port assignments
 
     # Withstand test (ACW, DCW)
     # Enable Withstand (High) channels
@@ -464,10 +474,14 @@ def hypot_setup(cavitynum):
     sc6540Driver.Execution.ConfigureWithstandChannels({highChannel})
 
     # Enable Return (Low) channels
-    if cavitynum == 5 or cavitynum == 10:
+    if cavitynum == 5:
         rtnChannel = 10  # Module B channel 2
     else:
         rtnChannel = 2 * cavitynum
+
+    print(f'switch: {switchNum}')
+    print(f'high: {highChannel}')
+    print(f'return: {rtnChannel}')
     sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start output for withstand test on those connections.
     time.sleep(1)
