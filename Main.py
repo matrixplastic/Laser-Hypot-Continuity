@@ -48,6 +48,8 @@ config['Continuity'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
 
+def connect_hardware(serialToConnect):
+    pass
 print('Setting up Drivers')
 # Driver Variables
 cc.GetModule('SC6540.dll')
@@ -57,13 +59,16 @@ cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
 hypotSerial1 = "AQ03JGPEA"
+hypotSerial2 = "A107A3OCA"
 sc6540Serial1 = "B0007EEKA"
 sc6540Serial2 = "B0007BEKA"
-hypotSerial2 = "A107A3OCA"
+
+
 # Setup Laser Connectivity
 laser = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
+laserIP = '10.10.0.167'
 try:
-    laser.connect(('10.10.0.167', 50000))  # IP and Port number for laser
+    laser.connect((laserIP, 50000))  # IP and Port number for laser
 except Exception as e:
     print(f'Connection to Laser Marker failed: {e}')
     logger.error(f'Connection to Laser Marker failed: {e}')
@@ -79,34 +84,34 @@ laserEnabled = {}
 hypotSettings = {}
 continuitySettings = {}
 defaultHypotSettings = {
-    'voltage': 1240,  # AC Voltage
-    'currenthighlimit': 20,  # Current High Limit
-    'currentlowlimit': 0,  # Current Low Limit
-    'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 2,  # RampDownTime in seconds
-    'rampdowntime': 0,  # Dewll time in seconds
-    'arcsenselevel': 5,  # ArcSense level
-    'arcdetection': True,  # Arc detection
+    'voltage': 1000,  # AC Voltage
+    'currenthighlimit': 10,  # Current High Limit
+    'currentlowlimit': 0.001,  # Current Low Limit
+    'rampuptime': 1,  # Ramp up time in seconds
+    'dwelltime': 5,  # RampDownTime in seconds
+    'rampdowntime': 1,  # Dewll time in seconds
+    'arcsenselevel': 1,  # ArcSense level
+    'arcdetection': False,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': False,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
-    'lowlimitresistance': 0,  # Low limit of the continuity resistance
-    'resistanceoffset': 0  # Continuity resistance offset
+    'lowlimitresistance': 0.01,  # Low limit of the continuity resistance
+    'resistanceoffset': 0.5  # Continuity resistance offset
 }
 defaultContinuitySettings = {
-    'voltage': 1240,  # AC Voltage
-    'currenthighlimit': 20,  # Current High Limit
-    'currentlowlimit': 0,  # Current Low Limit
+    'voltage': 1000,  # AC Voltage
+    'currenthighlimit': 10,  # Current High Limit
+    'currentlowlimit': 0.001,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 2,  # RampDownTime in seconds
-    'rampdowntime': 0,  # Dewll time in seconds
-    'arcsenselevel': 5,  # ArcSense level
-    'arcdetection': True,  # Arc detection
+    'dwelltime': 0.1,  # RampDownTime in seconds
+    'rampdowntime': 0.1,  # Dewll time in seconds
+    'arcsenselevel': 1,  # ArcSense level
+    'arcdetection': False,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': True,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
-    'lowlimitresistance': 0,  # Low limit of the continuity resistance
-    'resistanceoffset': 0  # Continuity resistance offset
+    'lowlimitresistance': 0.01,  # Low limit of the continuity resistance
+    'resistanceoffset': 0.5  # Continuity resistance offset
 }
 
 # Admin Panel Settings Variables
@@ -141,6 +146,7 @@ def find_com_port_by_serial_number(targetSerialNumber):
     for port in ports:
         # Print all device details for debugging purposes
         print(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
+        logger.info(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
         if targetSerialNumber in port.hwid:
             logger.info('Serial number: ' + targetSerialNumber + ' Located at: ' + port.device)
             return port.device
@@ -169,9 +175,13 @@ sc6540ComPort2 = find_com_port_by_serial_number(sc6540Serial2)
 portNumSC2 = concat_port(sc6540ComPort2)
 
 print(portNumHy1)
+logger.info(f"Hypot1 Port: {portNumHy1}")
 print(portNumHy2)
+logger.info(f"Hypot2 Port: {portNumHy1}")
 print(portNumSC1)
+logger.info(f"Switch1 Port: {portNumHy1}")
 print(portNumSC2)
+logger.info(f"Switch2 Port: {portNumHy1}")
 
 # Driver Setup
 try:
@@ -248,7 +258,14 @@ def get_settings():
             logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             errors.append("Error reading Settings.ini! Delete it, restart Program!")
-
+    global hypotSerial1
+    hypotSerial1 = config['Hardware IDs']['hypot1']
+    global hypotSerial2
+    hypotSerial2 = config['Hardware IDs']['hypot2']
+    global sc6540Serial1
+    sc6540Serial1 = config['Hardware IDs']['switch1']
+    global sc6540Serial2
+    sc6540Serial2 = config['Hardware IDs']['switch2']
 
     # Continuity
     for key, defaultValue in defaultContinuitySettings.items():
@@ -293,6 +310,29 @@ def save_settings():
 
         config.write(configfile)  # Close and save to settings file
     update_colors(canvas)
+
+
+def save_serials():
+    if hypotSerial1 != config['Hardware IDs']['hypot1']:
+        try:
+            config['Hardware IDs']['hypot1'] = hypotSerial1
+        except Exception as ex:
+            logger.error(f"Error Connecting to or Saving Hypot 1 to settings file! {ex}")
+    if hypotSerial2 != config['Hardware IDs']['hypot2']:
+        try:
+            config['Hardware IDs']['hypot2'] = hypotSerial2
+        except Exception as ex:
+            logger.error(f"Error Connecting to or Saving Hypot 2 to settings file! {ex}")
+    if sc6540Serial1 != config['Hardware IDs']['switch1']:
+        try:
+            config['Hardware IDs']['switch1'] = sc6540Serial1
+        except Exception as ex:
+            logger.error(f"Error Connecting to or Saving Switch 1 to settings file! {ex}")
+    if sc6540Serial2 != config['Hardware IDs']['switch2']:
+        try:
+            config['Hardware IDs']['switch2'] = sc6540Serial2
+        except Exception as ex:
+            logger.error(f"Error Connecting to or Saving Switch 2 to settings file! {ex}")
 
 
 def fault():
@@ -429,29 +469,22 @@ def on_stop_button_clicked():
 def continuity_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
         sc6540Driver = sc6540Driver1
-        switchNum = 1
     else:  # Second sc6540 switch and hypot
         sc6540Driver = sc6540Driver2
-        switchNum = 2
         cavitynum -= 5 # Reduce value for proper switch port assignments
 
     # After the multiplexer was configured, the safety or ground bond tester could start output for ground bond test on those connections.
     time.sleep(1)
 
     # Enable Return (Low) channels
-    if cavitynum == 5:
-        contHighChannel = 10  # Module B channel 1
-    else:
-        contHighChannel = 2 * cavitynum
+    rtnChannel = 2 * cavitynum - 1
 
     # Enable Continuity (High) channels
-    sc6540Driver.Execution.ConfigureContinuityChannels({contHighChannel})
-    sc6540Driver.Execution.ConfigureReturnChannels({16})
+    sc6540Driver.Execution.ConfigureContinuityChannels({16})
+    sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
     time.sleep(1)
 
-    print(f'switch: {switchNum}')
-    print(f'cont high: {contHighChannel}')
     logger.info('Continuity Setup Done')
     print('Continuity Setup Done')
 
@@ -459,30 +492,17 @@ def continuity_setup(cavitynum):
 def hypot_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
         sc6540Driver = sc6540Driver1
-        switchNum = 1
     else:  # Second sc6540 switch and hypot
         sc6540Driver = sc6540Driver2
-        switchNum = 2
         cavitynum -= 5 # Reduce value for proper switch port assignments
 
-    # Withstand test (ACW, DCW)
-    # Enable Withstand (High) channels
-    if cavitynum == 5 or cavitynum == 10:
-        highChannel = 9  # Module B channel 1
-    else:
-        highChannel = 2 * cavitynum - 1
-    sc6540Driver.Execution.ConfigureWithstandChannels({highChannel})
-
     # Enable Return (Low) channels
-    if cavitynum == 5:
-        rtnChannel = 10  # Module B channel 2
-    else:
-        rtnChannel = 2 * cavitynum
+    rtnChannel = 2 * cavitynum - 1
+    highChannel = 2 * cavitynum
 
-    print(f'switch: {switchNum}')
-    print(f'high: {highChannel}')
-    print(f'return: {rtnChannel}')
+    sc6540Driver.Execution.ConfigureWithstandChannels({highChannel})
     sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
+
     # After the multiplexer was configured, the safety tester could start output for withstand test on those connections.
     time.sleep(1)
 
