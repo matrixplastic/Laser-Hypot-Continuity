@@ -223,6 +223,10 @@ def get_settings():
     config.read('settings.ini')
     global errors
     global adminPassword
+    global hypotSerial1
+    global hypotSerial2
+    global switchSerial1
+    global switchSerial2
     try:
         adminPassword = config['Admin']['Password']
     except Exception as ex:  # Revert to default if password is missing in settings file
@@ -258,14 +262,36 @@ def get_settings():
             logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             errors.append("Error reading Settings.ini! Delete it, restart Program!")
-    global hypotSerial1
-    hypotSerial1 = config['Hardware IDs']['hypot1']
-    global hypotSerial2
-    hypotSerial2 = config['Hardware IDs']['hypot2']
-    global switchSerial1
-    switchSerial1 = config['Hardware IDs']['switch1']
-    global switchSerial2
-    switchSerial2 = config['Hardware IDs']['switch2']
+
+    updateHWIDS = {}
+    try:
+        hypotSerial1 = config['Hardware IDs']['hypot1']
+    except Exception as ex:
+        logger.error(f"No hypot1 hwid var in settings.ini: {ex}")
+        print(f"No hypot1 hwid var in settings.ini: {ex}")
+        updateHWIDS['hypot1'] = hypotSerial1
+
+    try:
+        hypotSerial2 = config['Hardware IDs']['hypot2']
+    except Exception as ex:
+        logger.error(f"No hypot2 hwid var in settings.ini: {ex}")
+        print(f"No hypot2 hwid var in settings.ini: {ex}")
+        updateHWIDS['hypot2'] = hypotSerial2
+    try:
+        switchSerial1 = config['Hardware IDs']['switch1']
+    except Exception as ex:
+        logger.error(f"No switch1 hwid var in settings.ini: {ex}")
+        print(f"No switch1 hwid var in settings.ini: {ex}")
+        updateHWIDS['switch1'] = switchSerial1
+    try:
+        switchSerial2 = config['Hardware IDs']['switch2']
+    except Exception as ex:
+        logger.error(f"No switch2 hwid var in settings.ini: {ex}")
+        print(f"No switch2 hwid var in settings.ini: {ex}")
+        updateHWIDS['switch2'] = switchSerial2
+
+    for device, hwid in updateHWIDS.items():    # Call to write hwids to settings.ini if they're missing
+        default_hwid_conf(device, hwid)
 
     # Continuity
     for key, defaultValue in defaultContinuitySettings.items():
@@ -288,6 +314,10 @@ def get_settings():
             print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
             errors.append("Error reading Settings.ini file! Delete it, and restart program.")
 
+def default_hwid_conf(device, hwid):
+    with open('settings.ini', 'w') as configfile:
+        config['Hardware IDs'][device] = hwid
+        config.write(configfile)
 def save_settings():
     # Write the config object to a file
     with open('settings.ini', 'w') as configfile:
