@@ -48,8 +48,7 @@ config['Continuity'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
 
-def connect_hardware(serialToConnect):
-    pass
+
 print('Setting up Drivers')
 # Driver Variables
 cc.GetModule('SC6540.dll')
@@ -58,10 +57,10 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotSerial1 = "AQ03JGPEA"
-hypotSerial2 = "A107A3OCA"
-switchSerial1 = "B0007EEKA"
-switchSerial2 = "B0007BEKA"
+hypotHwid1 = "AQ03JGPEA"
+hypotHwid2 = "A107A3OCA"
+switchHwid1 = "B0007EEKA"
+switchHwid2 = "B0007BEKA"
 
 
 # Setup Laser Connectivity
@@ -141,14 +140,14 @@ root.configure(bg=backgroundColor)
 # root.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
 
 
-def find_com_port_by_serial_number(targetSerialNumber):
+def find_com_port_by_hwid_number(targetHwidNumber):
     ports = serial.tools.list_ports.comports()
     for port in ports:
         # Print all device details for debugging purposes
         print(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
         logger.info(f"Device: {port.device}, Description: {port.description}, HWID: {port.hwid}")
-        if targetSerialNumber in port.hwid:
-            logger.info('Serial number: ' + targetSerialNumber + ' Located at: ' + port.device)
+        if targetHwidNumber in port.hwid:
+            logger.info('Hwid number: ' + targetHwidNumber + ' Located at: ' + port.device)
             return port.device
     return None
 
@@ -162,16 +161,16 @@ def concat_port(comPort):
 
 # Avoid using COM# because windows can mix it up
 
-hypotComPort1 = find_com_port_by_serial_number(hypotSerial1)
+hypotComPort1 = find_com_port_by_hwid_number(hypotHwid1)
 portNumHy1 = concat_port(hypotComPort1)
 
-hypotComPort2 = find_com_port_by_serial_number(hypotSerial2)
+hypotComPort2 = find_com_port_by_hwid_number(hypotHwid2)
 portNumHy2 = concat_port(hypotComPort2)
 
-switchComPort1 = find_com_port_by_serial_number(switchSerial1)
+switchComPort1 = find_com_port_by_hwid_number(switchHwid1)
 portNumSC1 = concat_port(switchComPort1)
 
-switchComPort2 = find_com_port_by_serial_number(switchSerial2)
+switchComPort2 = find_com_port_by_hwid_number(switchHwid2)
 portNumSC2 = concat_port(switchComPort2)
 
 print(portNumHy1)
@@ -223,10 +222,10 @@ def get_settings():
     config.read('settings.ini')
     global errors
     global adminPassword
-    global hypotSerial1
-    global hypotSerial2
-    global switchSerial1
-    global switchSerial2
+    global hypotHwid1
+    global hypotHwid2
+    global switchHwid1
+    global switchHwid2
     try:
         adminPassword = config['Admin']['Password']
     except Exception as ex:  # Revert to default if password is missing in settings file
@@ -265,30 +264,30 @@ def get_settings():
 
     updateHWIDS = {}
     try:
-        hypotSerial1 = config['Hardware IDs']['hypot1']
+        hypotHwid1 = config['Hardware IDs']['hypot1']
     except Exception as ex:
         logger.error(f"No hypot1 hwid var in settings.ini: {ex}")
         print(f"No hypot1 hwid var in settings.ini: {ex}")
-        updateHWIDS['hypot1'] = hypotSerial1
+        updateHWIDS['hypot1'] = hypotHwid1
 
     try:
-        hypotSerial2 = config['Hardware IDs']['hypot2']
+        hypotHwid2 = config['Hardware IDs']['hypot2']
     except Exception as ex:
         logger.error(f"No hypot2 hwid var in settings.ini: {ex}")
         print(f"No hypot2 hwid var in settings.ini: {ex}")
-        updateHWIDS['hypot2'] = hypotSerial2
+        updateHWIDS['hypot2'] = hypotHwid2
     try:
-        switchSerial1 = config['Hardware IDs']['switch1']
+        switchHwid1 = config['Hardware IDs']['switch1']
     except Exception as ex:
         logger.error(f"No switch1 hwid var in settings.ini: {ex}")
         print(f"No switch1 hwid var in settings.ini: {ex}")
-        updateHWIDS['switch1'] = switchSerial1
+        updateHWIDS['switch1'] = switchHwid1
     try:
-        switchSerial2 = config['Hardware IDs']['switch2']
+        switchHwid2 = config['Hardware IDs']['switch2']
     except Exception as ex:
         logger.error(f"No switch2 hwid var in settings.ini: {ex}")
         print(f"No switch2 hwid var in settings.ini: {ex}")
-        updateHWIDS['switch2'] = switchSerial2
+        updateHWIDS['switch2'] = switchHwid2
 
     for device, hwid in updateHWIDS.items():    # Call to write hwids to settings.ini if they're missing
         default_hwid_conf(device, hwid)
@@ -342,25 +341,25 @@ def save_settings():
     update_colors(canvas)
 
 
-def save_serials():
-    if hypotSerial1 != config['Hardware IDs']['hypot1']:
+def save_hwids():
+    if hypotHwid1 != config['Hardware IDs']['hypot1']:
         try:
-            config['Hardware IDs']['hypot1'] = hypotSerial1
+            config['Hardware IDs']['hypot1'] = hypotHwid1
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Hypot 1 to settings file! {ex}")
-    if hypotSerial2 != config['Hardware IDs']['hypot2']:
+    if hypotHwid2 != config['Hardware IDs']['hypot2']:
         try:
-            config['Hardware IDs']['hypot2'] = hypotSerial2
+            config['Hardware IDs']['hypot2'] = hypotHwid2
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Hypot 2 to settings file! {ex}")
-    if switchSerial1 != config['Hardware IDs']['switch1']:
+    if switchHwid1 != config['Hardware IDs']['switch1']:
         try:
-            config['Hardware IDs']['switch1'] = switchSerial1
+            config['Hardware IDs']['switch1'] = switchHwid1
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Switch 1 to settings file! {ex}")
-    if switchSerial2 != config['Hardware IDs']['switch2']:
+    if switchHwid2 != config['Hardware IDs']['switch2']:
         try:
-            config['Hardware IDs']['switch2'] = switchSerial2
+            config['Hardware IDs']['switch2'] = switchHwid2
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Switch 2 to settings file! {ex}")
 
