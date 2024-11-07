@@ -60,8 +60,8 @@ from comtypes.gen import ARI38XXLib
 
 hypotSerial1 = "AQ03JGPEA"
 hypotSerial2 = "A107A3OCA"
-sc6540Serial1 = "B0007EEKA"
-sc6540Serial2 = "B0007BEKA"
+switchSerial1 = "B0007EEKA"
+switchSerial2 = "B0007BEKA"
 
 
 # Setup Laser Connectivity
@@ -168,11 +168,11 @@ portNumHy1 = concat_port(hypotComPort1)
 hypotComPort2 = find_com_port_by_serial_number(hypotSerial2)
 portNumHy2 = concat_port(hypotComPort2)
 
-sc6540ComPort1 = find_com_port_by_serial_number(sc6540Serial1)
-portNumSC1 = concat_port(sc6540ComPort1)
+switchComPort1 = find_com_port_by_serial_number(switchSerial1)
+portNumSC1 = concat_port(switchComPort1)
 
-sc6540ComPort2 = find_com_port_by_serial_number(sc6540Serial2)
-portNumSC2 = concat_port(sc6540ComPort2)
+switchComPort2 = find_com_port_by_serial_number(switchSerial2)
+portNumSC2 = concat_port(switchComPort2)
 
 print(portNumHy1)
 logger.info(f"Hypot1 Port: {portNumHy1}")
@@ -202,17 +202,17 @@ except Exception as e:
     errors.append('Connection to Hypot2 failed')
 
 try:
-    sc6540Driver1 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
-    sc6540OptionString1 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
-    sc6540Driver1.Initialize(portNumSC1, True, False, sc6540OptionString1)
+    switchDriver1 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
+    switchOptionString1 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
+    switchDriver1.Initialize(portNumSC1, True, False, switchOptionString1)
 except Exception as e:
     print(f'Connection to SC6540 Switch1 failed: {e}')
     logger.error(f'Connection to SC6540 Switch1 failed: {e}')
     errors.append('Connection to SC6540 Switch1 failed')
 try:
-    sc6540Driver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
-    sc6540OptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
-    sc6540Driver2.Initialize(portNumSC2, True, False, sc6540OptionString2)
+    switchDriver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
+    switchOptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
+    switchDriver2.Initialize(portNumSC2, True, False, switchOptionString2)
 except Exception as e:
     print(f'Connection to SC6540 Switch2 failed: {e}')
     logger.error(f'Connection to SC6540 Switch2 failed: {e}')
@@ -262,10 +262,10 @@ def get_settings():
     hypotSerial1 = config['Hardware IDs']['hypot1']
     global hypotSerial2
     hypotSerial2 = config['Hardware IDs']['hypot2']
-    global sc6540Serial1
-    sc6540Serial1 = config['Hardware IDs']['switch1']
-    global sc6540Serial2
-    sc6540Serial2 = config['Hardware IDs']['switch2']
+    global switchSerial1
+    switchSerial1 = config['Hardware IDs']['switch1']
+    global switchSerial2
+    switchSerial2 = config['Hardware IDs']['switch2']
 
     # Continuity
     for key, defaultValue in defaultContinuitySettings.items():
@@ -323,14 +323,14 @@ def save_serials():
             config['Hardware IDs']['hypot2'] = hypotSerial2
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Hypot 2 to settings file! {ex}")
-    if sc6540Serial1 != config['Hardware IDs']['switch1']:
+    if switchSerial1 != config['Hardware IDs']['switch1']:
         try:
-            config['Hardware IDs']['switch1'] = sc6540Serial1
+            config['Hardware IDs']['switch1'] = switchSerial1
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Switch 1 to settings file! {ex}")
-    if sc6540Serial2 != config['Hardware IDs']['switch2']:
+    if switchSerial2 != config['Hardware IDs']['switch2']:
         try:
-            config['Hardware IDs']['switch2'] = sc6540Serial2
+            config['Hardware IDs']['switch2'] = switchSerial2
         except Exception as ex:
             logger.error(f"Error Connecting to or Saving Switch 2 to settings file! {ex}")
 
@@ -377,8 +377,8 @@ def reset(closeWindow, window):
     faultState = False
     if closeWindow:
         window.destroy()
-    sc6540Driver1.Execution.DisableAllChannels()
-    sc6540Driver2.Execution.DisableAllChannels()
+    switchDriver1.Execution.DisableAllChannels()
+    switchDriver2.Execution.DisableAllChannels()
     # Set all Output Variables to 0
     for cavity in cavityContinuitySuccesses:
         cavityContinuitySuccesses[cavity] = 0
@@ -403,20 +403,20 @@ def start():
             print('Running Cavity: ' + str(cavitynum))
             logger.info('Running Cavity: ' + str(cavitynum))
 
-            sc6540Driver1.Execution.DisableAllChannels()
-            sc6540Driver2.Execution.DisableAllChannels()
+            switchDriver1.Execution.DisableAllChannels()
+            switchDriver2.Execution.DisableAllChannels()
 
             continuity_setup(cavitynum)
             hypot_execution(continuityTest=True, cavityNum=cavitynum)
 
-            sc6540Driver1.Execution.DisableAllChannels()
-            sc6540Driver2.Execution.DisableAllChannels()
+            switchDriver1.Execution.DisableAllChannels()
+            switchDriver2.Execution.DisableAllChannels()
 
             hypot_setup(cavitynum)
             hypot_execution(continuityTest=False, cavityNum=cavitynum)
 
-            sc6540Driver1.Execution.DisableAllChannels()
-            sc6540Driver2.Execution.DisableAllChannels()
+            switchDriver1.Execution.DisableAllChannels()
+            switchDriver2.Execution.DisableAllChannels()
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
@@ -438,16 +438,16 @@ def startstart():  # This is to put the main loop on a separate thread so it can
 def stop():
     logger.error('Emergency Stop Used!')
     try:
-        sc6540Driver1.Execution.DisableAllChannels()
-        sc6540Driver2.Execution.DisableAllChannels()
+        switchDriver1.Execution.DisableAllChannels()
+        switchDriver2.Execution.DisableAllChannels()
         logger.error('Emergency Stop Done!')
         root.quit()
         root.destroy()
         sys.exit()
     except Exception as ex:
         logger.error(f"Error during emergency stop!: {ex}")
-        sc6540Driver1.Execution.DisableAllChannels()
-        sc6540Driver2.Execution.DisableAllChannels()
+        switchDriver1.Execution.DisableAllChannels()
+        switchDriver2.Execution.DisableAllChannels()
         logger.error('Emergency Stop Done!')
         root.quit()
         root.destroy()
@@ -468,9 +468,9 @@ def on_stop_button_clicked():
 
 def continuity_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
-        sc6540Driver = sc6540Driver1
+        switchDriver = switchDriver1
     else:  # Second sc6540 switch and hypot
-        sc6540Driver = sc6540Driver2
+        switchDriver = switchDriver2
         cavitynum -= 5 # Reduce value for proper switch port assignments
 
     # After the multiplexer was configured, the safety or ground bond tester could start output for ground bond test on those connections.
@@ -480,8 +480,8 @@ def continuity_setup(cavitynum):
     rtnChannel = 2 * cavitynum - 1
 
     # Enable Continuity (High) channels
-    sc6540Driver.Execution.ConfigureContinuityChannels({16})
-    sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
+    switchDriver.Execution.ConfigureContinuityChannels({16})
+    switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
     time.sleep(1)
 
@@ -491,17 +491,17 @@ def continuity_setup(cavitynum):
 
 def hypot_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
-        sc6540Driver = sc6540Driver1
+        switchDriver = switchDriver1
     else:  # Second sc6540 switch and hypot
-        sc6540Driver = sc6540Driver2
+        switchDriver = switchDriver2
         cavitynum -= 5 # Reduce value for proper switch port assignments
 
     # Enable Return (Low) channels
     rtnChannel = 2 * cavitynum - 1
     highChannel = 2 * cavitynum
 
-    sc6540Driver.Execution.ConfigureWithstandChannels({highChannel})
-    sc6540Driver.Execution.ConfigureReturnChannels({rtnChannel})
+    switchDriver.Execution.ConfigureWithstandChannels({highChannel})
+    switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
 
     # After the multiplexer was configured, the safety tester could start output for withstand test on those connections.
     time.sleep(1)
