@@ -65,10 +65,10 @@ switchSerial2 = "B0007BEKA"
 
 
 # Setup Laser Connectivity
-laser = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
+laserSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
 laserIP = '10.10.0.167'
 try:
-    laser.connect((laserIP, 50000))  # IP and Port number for laser
+    laserSocket.connect((laserIP, 50000))  # IP and Port number for laser
 except Exception as e:
     print(f'Connection to Laser Marker failed: {e}')
     logger.error(f'Connection to Laser Marker failed: {e}')
@@ -650,7 +650,7 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
         msg = 'WX,PRG=' + str(cavityNum) + ',BLK=1, MarkingParameter=80,1500,70'
-        laser.send(msg.encode('utf-8'))  # Converts command string to byte format
+        laserSocket.send(msg.encode('utf-8'))  # Converts command string to byte format
 
         read_laser()
 
@@ -662,7 +662,7 @@ def laser(cavityNum):
 
 
 def read_laser():
-    response = laser.recv(1024)  # Listens for data, max amount of bytes specified in ()
+    response = laserSocket.recv(1024)  # Listens for data, max amount of bytes specified in ()
     response = response.decode('utf-8')  # Converts bytes to string
 
     print(response)
