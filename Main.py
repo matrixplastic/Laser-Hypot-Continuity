@@ -82,6 +82,7 @@ runCavity = {}
 laserEnabled = {}
 hypotSettings = {}
 continuitySettings = {}
+usbHwids = set()
 defaultHypotSettings = {
     'voltage': 1000,  # AC Voltage
     'currenthighlimit': 10,  # Current High Limit
@@ -138,6 +139,15 @@ textColor = 'White'
 
 root.configure(bg=backgroundColor)
 # root.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
+
+
+def get_usb_hwids():
+    ports = serial.tools.list_ports.comports()
+    for port in ports:
+        hwid = port.hwid.split('SER=')[1]
+        usbhwids.add(hwid)
+    print(f"HWIDs: {usbhwids}")
+    logger.info(f"HWIDs: {usbhwids}")
 
 
 def find_com_port_by_hwid_number(targetHwidNumber):
