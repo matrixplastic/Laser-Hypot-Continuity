@@ -145,9 +145,9 @@ def get_usb_hwids():
     ports = serial.tools.list_ports.comports()
     for port in ports:
         hwid = port.hwid.split('SER=')[1]
-        usbhwids.add(hwid)
-    print(f"HWIDs: {usbhwids}")
-    logger.info(f"HWIDs: {usbhwids}")
+        usbHwids.add(hwid)
+    print(f"HWIDs: {usbHwids}")
+    logger.info(f"HWIDs: {usbHwids}")
 
 
 def find_com_port_by_hwid_number(targetHwidNumber):
@@ -327,6 +327,8 @@ def default_hwid_conf(device, hwid):
     with open('settings.ini', 'w') as configfile:
         config['Hardware IDs'][device] = hwid
         config.write(configfile)
+
+
 def save_settings():
     # Write the config object to a file
     with open('settings.ini', 'w') as configfile:
@@ -911,11 +913,66 @@ def admin_panel():
         hypotTkinterObjs['resistanceoffset'].set(hypotSettings['resistanceoffset'])
         hypotTkinterObjs['resistanceoffset'].grid(row=11, column=13, padx=20)
 
+        hardwareSettingsButton = tk.Button(adminWindow, text='Hardware\nSettings', command=hardware_settings, bg='#000000', fg=textColor, relief='flat', width=11, height=3, font=helvsmall)
+        hardwareSettingsButton.grid(row=12, column=4)
+
     else: # Wrong password
         wrongPassLabel = tk.Label(root, text="Wrong Password!")
         wrongPassLabel.place(x=1550, y=925)
         root.after(3000, lambda: wrongPassLabel.destroy())  # time in ms
 
+
+def hardware_settings():
+    try:  # Prevent duplicate windows being opened
+        # noinspection PyUnboundLocalVariable
+        if hardwareWindow.winfo_exists():  # python will raise an exception there if variable doesn't exist
+            hardwareWindow.after(1, lambda: hardwareWindow.focus_force())  # Refocuses window instead of creating a duplicate
+            pass
+        else:
+            hardwareWindow = tk.Toplevel(root)
+    except (NameError, tk.TclError):  # exception? we are now here.
+        hardwareWindow = tk.Toplevel(root)
+    else:  # no exception and no window? creating window.
+        if not hardwareWindow.winfo_exists():
+            hardwareWindow = tk.Toplevel(root)
+    def quit_hardware():
+        hardwareWindow.destroy()
+
+    hardwareWindow.geometry('800x400')
+    hardwareWindow.title('Hardware Panel')
+    hardwareWindow.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
+    hardwareWindow.attributes('-topmost', True)  # Force it to be above all other program windows
+    hardwareWindow.configure(bg=backgroundColor)
+    hardwareWindow.lift()
+
+    get_usb_hwids()
+    hypot1Var = tk.StringVar()
+    hypot1Dropdown = ttk.Combobox(hardwareWindow, textvariable=hypot1Var, values=list(usbHwids))
+    hypot1Dropdown.pack(pady=10)
+    hypot2Var = tk.StringVar()
+    hypot2Dropdown = ttk.Combobox(hardwareWindow, textvariable=hypot2Var, values=list(usbHwids))
+    hypot2Dropdown.pack(pady=10)
+    switch1Var = tk.StringVar()
+    switch1Dropdown = ttk.Combobox(hardwareWindow, textvariable=switch1Var, values=list(usbHwids))
+    switch1Dropdown.pack(pady=10)
+    switch2Var = tk.StringVar()
+    switch2Dropdown = ttk.Combobox(hardwareWindow, textvariable=switch2Var, values=list(usbHwids))
+    switch2Dropdown.pack(pady=10)
+    def set_default_hwid():
+        hypot1Dropdown.set(hypotHwid1)
+        hypot2Dropdown.set(hypotHwid2)
+        switch1Dropdown.set(switchHwid1)
+        switch2Dropdown.set(switchHwid2)
+    hardwareWindow.update()
+    switch2Dropdown.update_idletasks()
+    switch1Dropdown.update()
+    hardwareWindow.after(100, set_default_hwid())  # Pause for a bit otherwise default values are unset
+
+    save_hwidButton = tk.Button(hardwareWindow, text='Save', command=save_hwids, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
+    save_hwidButton.pack(pady=10)
+
+    quitHardwareButton = tk.Button(hardwareWindow, text='Close', command=quit_hardware, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
+    quitHardwareButton.pack(pady=10)
 
 # Function to create a grid of rectangles and store references
 def create_rectangle_grid(rows, columns, rectWidth, rectHeight, padding, canv):
