@@ -57,7 +57,7 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotHwid1 = "AQ03JGPEA"
+hypotHwid1 = "AQ0465K5A"
 hypotHwid2 = "A107A3OCA"
 switchHwid1 = "B0007EEKA"
 switchHwid2 = "B0007BEKA"
@@ -437,6 +437,10 @@ def start():
             disabledCavs += 1
     totalProgressBar['value'] = (disabledCavs * 10)
     totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
+    for i in range(1, 11):
+        cavityContinuitySuccesses[i] = 0
+        cavityHypotSuccesses[i] = 0
+
     for cavity, value in runCavity.items():
         cavitynum = ''.join([char for char in cavity if char.isdigit()])
         cavitynum = int(cavitynum)
@@ -453,8 +457,13 @@ def start():
             switchDriver1.Execution.DisableAllChannels()
             switchDriver2.Execution.DisableAllChannels()
 
-            hypot_setup(cavitynum)
-            hypot_execution(continuityTest=False, cavityNum=cavitynum)
+            if cavityContinuitySuccesses[cavitynum] == 1:
+                hypot_setup(cavitynum)
+                hypot_execution(continuityTest=False, cavityNum=cavitynum)
+            else:
+                print(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
+                logger.info(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
+                cavityHypotSuccesses[cavitynum] = 0
 
             switchDriver1.Execution.DisableAllChannels()
             switchDriver2.Execution.DisableAllChannels()
@@ -654,9 +663,11 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
                 if continuityTest:
                     cavityContinuitySuccesses[cavityNum] = 1
                     print('Cavity ' + str(cavityNum) + ' passes continuity')
+                    logger.info('Cavity ' + str(cavityNum) + ' passes continuity')
                 else:
                     cavityHypotSuccesses[cavityNum] = 1
                     print('Cavity ' + str(cavityNum) + ' passes hypot')
+                    logger.info('Cavity ' + str(cavityNum) + ' passes hypot')
             # Failures
             if 'Cont' in output[2]:  # Failed Continuity (Can show , so check if Cont in output
                 faultState = True
