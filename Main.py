@@ -558,16 +558,31 @@ def hypot_execution(continuityTest, cavityNum):
         hypotDriver = hypotDriver2
 
     # Create file
-    try:
-        hypotDriver.Files.Create(1, 'IviTest')
-    except Exception as ex:
-        logger.error('Missing Test File creating a new one, or Issue: ' + str(ex))
-        files = hypotDriver.Files.TotalFiles
-        for h in range(1, files + 1):
-            if 'IviTest' in hypotDriver.Files.QueryFileName(h):
-                hypotDriver.Files.Delete(h)
-                hypotDriver.Files.Create(h, 'IviTest')
-                break
+    if continuityTest:
+        try:
+            hypotDriver.Files.Create(1, 'LHCcont')
+        except Exception as ex:
+            print(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
+            logger.error(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
+            files = hypotDriver.Files.TotalFiles
+            for h in range(1, files + 1):
+                if 'LHCcont' in hypotDriver.Files.QueryFileName(h):
+                    hypotDriver.Files.Delete(h)
+                    hypotDriver.Files.Create(h, 'LHCcont')
+                    break
+    else:
+        try:
+            hypotDriver.Files.Create(1, 'LHChypot')
+        except Exception as ex:
+            print(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
+            logger.error(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
+            files = hypotDriver.Files.TotalFiles
+            for h in range(1, files + 1):
+                if 'LHChypot' in hypotDriver.Files.QueryFileName(h):
+                    hypotDriver.Files.Delete(h)
+                    hypotDriver.Files.Create(h, 'LHChypot')
+                    break
+
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
     try:
