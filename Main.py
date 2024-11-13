@@ -472,7 +472,7 @@ def start():
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
-            # laser(cavitynum)
+            laser(cavitynum)
         print('=================================')  # Separate cavities for testing readability
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         fault()
@@ -634,9 +634,14 @@ def hypot_execution(continuityTest, cavityNum):
         read_hypot(continuityTest=continuityTest, hypotDriver=hypotDriver, cavityNum=cavityNum)
         # Reset test and close connection
     except Exception as ex:
-        logger.error('Exception occured at Hypot execution: ' + str(ex))
-        errors.append('Exception occured at Hypot execution: ' + str(ex))
-        print('Exception occured at Hypot execution: ' + str(ex))
+        if continuityTest:
+            logger.error('Exception occured at Continuity execution: ' + str(ex))
+            errors.append('Exception occured at Continuity execution: ' + str(ex))
+            print('Exception occured at Continuity execution: ' + str(ex))
+        else:
+            logger.error('Exception occured at Hypot execution: ' + str(ex))
+            errors.append('Exception occured at Hypot execution: ' + str(ex))
+            print('Exception occured at Hypot execution: ' + str(ex))
     hypotDriver.Execution.Abort()
 
     if (continuityTest):
@@ -686,6 +691,7 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
 
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
+        cavityNum -= 1 # Laser programs array starts at 0
         msg = 'WX,PRG=' + str(cavityNum) + ',BLK=1, MarkingParameter=80,1500,70'
         laserSocket.send(msg.encode('utf-8'))  # Converts command string to byte format
 
@@ -694,8 +700,8 @@ def laser(cavityNum):
         logger.info('Laser Done')
         print('Laser Done')
     else:
-        logger.info('Skipping Laser')
-        print('Skipping Laser')
+        logger.info('Skipping Laser due to failed cont or hypot')
+        print('Skipping Laser due to failed cont or hypot')
 
 
 def read_laser():
