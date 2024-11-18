@@ -183,28 +183,23 @@ portNumSC1 = concat_port(switchComPort1)
 switchComPort2 = find_com_port_by_hwid_number(switchHwid2)
 portNumSC2 = concat_port(switchComPort2)
 
-print(portNumHy1)
-logger.info(f"Hypot1 Port: {portNumHy1}")
-print(portNumHy2)
-logger.info(f"Hypot2 Port: {portNumHy1}")
-print(portNumSC1)
-logger.info(f"Switch1 Port: {portNumHy1}")
-print(portNumSC2)
-logger.info(f"Switch2 Port: {portNumHy1}")
 
 # Driver Setup
 try:
     hypotDriver1 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
     hypotDriver1.Initialize(portNumHy1, True, False, 'DriverSetup=BaudRate=38400')
+    print(f"Hypot1 Port: {portNumHy1}")
+    logger.info(f"Hypot1 Port: {portNumHy1}")
 except Exception as e:
     print(f'Connection to Hypot1 failed: {e}')
     logger.error(f'Connection to Hypot1 failed: {e}')
     errors.append('Connection to Hypot1 failed')
 
 try:
-    pass
     hypotDriver2 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
     hypotDriver2.Initialize(portNumHy2, True, False, 'DriverSetup=BaudRate=38400')
+    print(f"Hypot2 Port: {portNumHy2}")
+    logger.info(f"Hypot2 Port: {portNumHy2}")
 except Exception as e:
     print(f'Connection to Hypot2 failed: {e}')
     logger.error(f'Connection to Hypot2 failed: {e}')
@@ -214,6 +209,8 @@ try:
     switchDriver1 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
     switchOptionString1 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
     switchDriver1.Initialize(portNumSC1, True, False, switchOptionString1)
+    print(f"Switch1 Port: {portNumSC1}")
+    logger.info(f"Switch1 Port: {portNumSC1}")
 except Exception as e:
     print(f'Connection to SC6540 Switch1 failed: {e}')
     logger.error(f'Connection to SC6540 Switch1 failed: {e}')
@@ -222,6 +219,8 @@ try:
     switchDriver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
     switchOptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
     switchDriver2.Initialize(portNumSC2, True, False, switchOptionString2)
+    print(f"Switch2 Port: {portNumSC2}")
+    logger.info(f"Switch2 Port: {portNumSC2}")
 except Exception as e:
     print(f'Connection to SC6540 Switch2 failed: {e}')
     logger.error(f'Connection to SC6540 Switch2 failed: {e}')
@@ -573,24 +572,16 @@ def hypot_execution(continuityTest, cavityNum):
         except Exception as ex:
             print(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
             logger.error(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
-            files = hypotDriver.Files.TotalFiles
-            for h in range(1, files + 1):
-                if 'LHCcont' in hypotDriver.Files.QueryFileName(h):
-                    hypotDriver.Files.Delete(h)
-                    hypotDriver.Files.Create(h, 'LHCcont')
-                    break
+            hypotDriver.Files.Delete(1)
+            hypotDriver.Files.Create(1, 'LHCcont')
     else:
         try:
-            hypotDriver.Files.Create(1, 'LHChypot')
+            hypotDriver.Files.Create(2, 'LHChypot')
         except Exception as ex:
             print(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
             logger.error(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
-            files = hypotDriver.Files.TotalFiles
-            for h in range(1, files + 1):
-                if 'LHChypot' in hypotDriver.Files.QueryFileName(h):
-                    hypotDriver.Files.Delete(h)
-                    hypotDriver.Files.Create(h, 'LHChypot')
-                    break
+            hypotDriver.Files.Delete(2)
+            hypotDriver.Files.Create(2, 'LHChypot')
 
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
