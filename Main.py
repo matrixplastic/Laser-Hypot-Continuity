@@ -164,10 +164,10 @@ def find_com_port_by_hwid_number(targetHwidNumber):
 
 def concat_port(comPort):
     try:
-        print(f'Serial Port Alias: {comPort}')
-        logger.info(f'Serial Port Alias: {comPort}')
-        print('ASRL' + comPort.replace("COM", '') + '::INSTR')
-        logger.info('ASRL' + comPort.replace("COM", '') + '::INSTR')
+        print(f'Com Port: {comPort}')
+        logger.info(f'Com Port: {comPort}')
+        print('Serial Port Alias: ASRL' + comPort.replace("COM", '') + '::INSTR')
+        logger.info('Serial Port Alias: ASRL' + comPort.replace("COM", '') + '::INSTR')
         return 'ASRL' + comPort.replace("COM", '') + '::INSTR'
     except Exception as ex:
         logger.error(f'Concat port error with {comPort}: {ex}')
