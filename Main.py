@@ -164,6 +164,10 @@ def find_com_port_by_hwid_number(targetHwidNumber):
 
 def concat_port(comPort):
     try:
+        print(f'Serial Port Alias: {comPort}')
+        logger.info(f'Serial Port Alias: {comPort}')
+        print('ASRL' + comPort.replace("COM", '') + '::INSTR')
+        logger.info('ASRL' + comPort.replace("COM", '') + '::INSTR')
         return 'ASRL' + comPort.replace("COM", '') + '::INSTR'
     except Exception as ex:
         logger.error(f'Concat port error with {comPort}: {ex}')
@@ -483,28 +487,36 @@ def startstart():  # This is to put the main loop on a separate thread so it can
     mainThread = Thread(target=start)
     mainThread.start()
 
+def close_drivers():
+    hypotDriver1.close()
+    hypotDriver2.close()
+    switchDriver1.close()
+    switchDriver2.close()
 
 def stop():
     logger.error('Emergency Stop Used!')
+    print('Emergency Stop Used!')
     try:
         switchDriver1.Execution.DisableAllChannels()
         switchDriver2.Execution.DisableAllChannels()
-        logger.error('Emergency Stop Done!')
+        close_drivers()
         root.quit()
         root.destroy()
         sys.exit()
     except Exception as ex:
         logger.error(f"Error during emergency stop!: {ex}")
+        print(f"Error during emergency stop!: {ex}")
         switchDriver1.Execution.DisableAllChannels()
         switchDriver2.Execution.DisableAllChannels()
-        logger.error('Emergency Stop Done!')
+        close_drivers()
         root.quit()
         root.destroy()
         sys.exit()
     finally:
         # Ensure that the Tkinter main loop exits cleanly
         logger.error('Hit finally in emergency stop!')
-        logger.error('Emergency Stop Done!')
+        print('Hit finally in emergency stop!')
+        close_drivers()
         root.quit()
         root.destroy()
         sys.exit()
