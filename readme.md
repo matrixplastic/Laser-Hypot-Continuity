@@ -10,7 +10,8 @@
 6. [Configuration](#configuration)
 7. [Contributions](#contributions)
 8. [Installation](#installation)
-9. [License](#license)
+9. [Help](#help)
+10. [License](#license)
 
 ## Overview
 
@@ -69,6 +70,14 @@ git clone https://github.com/matrixplastic/Laser-Hypot-Continuity.git
 cd /Path/To/Your/Cloned/Project
 pip install -r requirements.txt
 ```
+
+## Help
+The error codes are listed in the *.chm file which should be at C:\Program Files\IVI Foundation\IVI\Drivers\ARI38XX. Please refer to the following pages if you would like to know more about the errors,
+
+ARI38X IVI-COM Driver -> Reference -> Errors and Warnings
+
+ARI38X IVI-COM Driver -> Reference -> Driver Hierarchy -> IARI38XX -> Utility -> ErrorQuery
+
 
 ## License
 
