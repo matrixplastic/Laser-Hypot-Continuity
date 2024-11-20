@@ -191,7 +191,7 @@ portNumSC2 = concat_port(switchComPort2)
 # Driver Setup
 try:
     hypotDriver1 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
-    hypotDriver1.Initialize(portNumHy1, True, False, 'QueryInstrStatus=true, DriverSetup=BaudRate=38400')
+    hypotDriver1.Initialize(portNumHy1, True, False, 'DriverSetup=BaudRate=38400, QueryInstrStatus=true')
     print(f"Hypot1 Port: {portNumHy1}")
     logger.info(f"Hypot1 Port: {portNumHy1}")
 except Exception as e:
@@ -201,7 +201,7 @@ except Exception as e:
 
 try:
     hypotDriver2 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
-    hypotDriver2.Initialize(portNumHy2, True, False, 'QueryInstrStatus=true, DriverSetup=BaudRate=38400')
+    hypotDriver2.Initialize(portNumHy2, True, False, 'DriverSetup=BaudRate=38400, QueryInstrStatus=true')
     print(f"Hypot2 Port: {portNumHy2}")
     logger.info(f"Hypot2 Port: {portNumHy2}")
 except Exception as e:
