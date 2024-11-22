@@ -483,7 +483,7 @@ def start():
         reset(closeWindow=False, window=False)
 
 
-def startstart():  # This is to put the main loop on a separate thread so it can be emergency stopped
+def start_start():  # This is to put the main loop on a separate thread so it can be emergency stopped
     mainThread = Thread(target=start)
     mainThread.start()
 
@@ -694,25 +694,34 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
 
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
-        cavityNum -= 1 # Laser programs array starts at 0
-        msg = 'WX,PRG=' + str(cavityNum) + ',BLK=1, MarkingParameter=80,1500,70'
-        laserSocket.send(msg.encode('utf-8'))  # Converts command string to byte format
-
-        read_laser()
-
-        logger.info('Laser Done')
-        print('Laser Done')
+        if send_laser('RX,Ready\r').split(',')[1] == 'OK':
+            cavityNum -= 1 # Laser programs array starts at 0
+            send_laser('WX,ProgramNo='+str(cavityNum)+'\r')
+            send_laser('WX,StartMarking\r')
+            send_laser('RX,ProgramNo\r')
+        else:
+            print('Laser not ready, skipping')
+            logger.info('Laser not ready, skipping')
     else:
-        logger.info('Skipping Laser due to failed cont or hypot')
         print('Skipping Laser due to failed cont or hypot')
+        logger.info('Skipping Laser due to failed cont or hypot')
+
+    print('Laser Done')
+    logger.info('Laser Done')
+
+def send_laser(msg):
+    print(f'Sending to laser: {msg}')
+    logger.info(f'Sending to laser: {msg}')
+    laserSocket.send(msg.encode('utf-8'))
+    return read_laser()
 
 
 def read_laser():
     response = laserSocket.recv(1024)  # Listens for data, max amount of bytes specified in ()
     response = response.decode('utf-8')  # Converts bytes to string
-
-    print(response)
-    logger.info('Laser Output: ' + response)
+    print(f'Laser Output: {response}')
+    logger.info(f'Laser Output: {response}')
+    return response
 
 
 def admin_panel():
@@ -1081,7 +1090,7 @@ helvmedium = tkfont.Font(family='Helvetica', size=15, weight='bold')
 helvsmall = tkfont.Font(family='Helvetica', size=10, weight='bold')
 
 # UI Setup
-startButton = tk.Button(root, text='START', command=startstart, bg='#000000', fg=textColor, relief='flat', width=20, height=12, font=helv)
+startButton = tk.Button(root, text='START', command=start_start, bg='#000000', fg=textColor, relief='flat', width=20, height=12, font=helv)
 startButton.place(x=50, y=400)
 stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18, height=3, font=helvmedium)
 stopButton.place(x=850, y=875)
