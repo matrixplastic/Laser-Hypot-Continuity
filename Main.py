@@ -103,7 +103,7 @@ defaultContinuitySettings = {
     'currenthighlimit': 10,  # Current High Limit
     'currentlowlimit': 0.001,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 0.1,  # RampDownTime in seconds
+    'dwelltime': 0.4,  # RampDownTime in seconds
     'rampdowntime': 0.1,  # Dewll time in seconds
     'arcsenselevel': 1,  # ArcSense level
     'arcdetection': False,  # Arc detection
