@@ -402,7 +402,7 @@ def fault():
             continuityFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
             continuityFaultList[cavity].grid(row=cavity + 2, column=0)
     if continuityFaultList:  # If there are any continuity faults, put header
-        continuityFaultHeader = tk.Label(faultWindow, text='Continuity Issues', font=helvUnderline, fg=textColor, bg=backgroundColor)
+        continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
         continuityFaultHeader.grid(row=1, column=0, columnspan=2, pady=5)
 
     hypotFaultList = {}
@@ -412,7 +412,7 @@ def fault():
             hypotFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
             hypotFaultList[cavity].grid(row=cavity + 2, column=3)
     if hypotFaultList:  # If there are any hypot faults, put header
-        continuityFaultHeader = tk.Label(faultWindow, text='Hypot Issues', font=helvUnderline, fg=textColor, bg=backgroundColor)
+        continuityFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
         continuityFaultHeader.grid(row=1, column=3, columnspan=2, pady=5)
 
 
@@ -466,7 +466,7 @@ def start():
             else:
                 print(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
                 logger.info(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
-                cavityHypotSuccesses[cavitynum] = 0
+                cavityHypotSuccesses[cavitynum] = 2 # Dont show on fault window, but don't do other functions either
 
             switchDriver1.Execution.DisableAllChannels()
             switchDriver2.Execution.DisableAllChannels()
