@@ -381,7 +381,7 @@ def save_hwids():
 
 def fault():
     faultWindow = tk.Toplevel(root)
-    faultWindow.geometry('900x450')
+    faultWindow.geometry('1000x500')
     faultWindow.title('Part Fault')
     faultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
     faultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
@@ -476,6 +476,10 @@ def start():
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
             laser(cavitynum)
+        print(f"Continuity results: {cavityContinuitySuccesses}")
+        logger.info(f"Continuity results: {cavityContinuitySuccesses}")
+        print(f"Hypot results: {cavityHypotSuccesses}")
+        logger.info(f"Hypot results: {cavityHypotSuccesses}")
         print('=================================')  # Separate cavities for testing readability
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         fault()
@@ -676,21 +680,21 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
                     cavityHypotSuccesses[cavityNum] = 1
                     print('Cavity ' + str(cavityNum) + ' passes hypot')
                     logger.info('Cavity ' + str(cavityNum) + ' passes hypot')
-            # Failures
-            if 'Cont' in output[2]:  # Failed Continuity (Can show , so check if Cont in output
-                faultState = True
-                cavityContinuitySuccesses[cavityNum] = 0
-                print('Cavity ' + str(cavityNum) + ' fails continuity')
-                logger.info('Cavity ' + str(cavityNum) + ' fails continuity')
-            if output[2] == 'Breakdown':  # Failed Hypot
-                faultState = True
-                cavityHypotSuccesses[cavityNum] = 0
-                print('Cavity ' + str(cavityNum) + ' fails hypot')
-                logger.info('Cavity ' + str(cavityNum) + ' fails hypot')
             break
         lastOpcStatus = '1' in opcStatus
         time.sleep(0.1)
-
+    # Failures checked after loop is broken out of, check if passed if not then set fail.
+    # Might be to look at output[2] last value to determine pass/fail. Not doing to reduce complexity or overwriting correct values
+    if continuityTest and cavityContinuitySuccesses[cavityNum] != 1:
+        cavityContinuitySuccesses[cavityNum] = 0
+        print('Cavity ' + str(cavityNum) + ' fails continuity')
+        logger.info('Cavity ' + str(cavityNum) + ' fails continuity')
+        faultState = True
+    elif continuityTest is False and cavityHypotSuccesses[cavityNum] != 1:
+        cavityHypotSuccesses[cavityNum] = 0
+        print('Cavity ' + str(cavityNum) + ' fails Hypot')
+        logger.info('Cavity ' + str(cavityNum) + ' fails Hypot')
+        faultState = True
 
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
