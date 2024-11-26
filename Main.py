@@ -478,8 +478,8 @@ def start():
             laser(cavitynum)
         print(f"Continuity results: {cavityContinuitySuccesses}")
         logger.info(f"Continuity results: {cavityContinuitySuccesses}")
-        print(f"Hypot results: {cavityHypotSuccesses}")
-        logger.info(f"Hypot results: {cavityHypotSuccesses}")
+        print(f"Hypot results:      {cavityHypotSuccesses}")
+        logger.info(f"Hypot results:      {cavityHypotSuccesses}")
         print('=================================')  # Separate cavities for testing readability
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         fault()
@@ -714,18 +714,28 @@ def laser(cavityNum):
     logger.info('Laser Done')
 
 def send_laser(msg):
-    print(f'Sending to laser: {msg}')
-    logger.info(f'Sending to laser: {msg}')
-    laserSocket.send(msg.encode('utf-8'))
-    return read_laser()
+    try:
+        print(f'Sending to laser: {msg}')
+        logger.info(f'Sending to laser: {msg}')
+        laserSocket.send(msg.encode('utf-8'))
+        return read_laser()
+    except Exception as ex:
+        logger.error(f'Issue sending commands to Laser Marker: {ex}')
+        print(f'Issue sending commands to Laser Marker: {ex}')
+        return 'ng,ng,ng'  # Return no good string
 
 
 def read_laser():
-    response = laserSocket.recv(1024)  # Listens for data, max amount of bytes specified in ()
-    response = response.decode('utf-8')  # Converts bytes to string
-    print(f'Laser Output: {response}')
-    logger.info(f'Laser Output: {response}')
-    return response
+    try:
+        response = laserSocket.recv(1024)  # Listens for data, max amount of bytes specified in ()
+        response = response.decode('utf-8')  # Converts bytes to string
+        print(f'Laser Output: {response}')
+        logger.info(f'Laser Output: {response}')
+        return response
+    except Exception as ex:
+        logger.error(f'Issue receiving commands from Laser Marker: {ex}')
+        print(f'Issue receiving commands from Laser Marker: {ex}')
+        return 'ng,ng,ng'   # Return no good string
 
 
 def admin_panel():
