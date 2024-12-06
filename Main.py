@@ -396,24 +396,24 @@ def fault():
     faultResetButton.grid(row=13, column=2, padx=3, pady=3)
 
     continuityFaultList = {}
+    continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
+    continuityFaultHeader.grid(row=1, column=0, columnspan=2, pady=5)
     for cavity, value in cavityContinuitySuccesses.items():
         if not value:  # If failed continuity test
             logger.info('Continuity fail on Cavity: ' + str(cavity))
             continuityFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
             continuityFaultList[cavity].grid(row=cavity + 2, column=0)
-    if continuityFaultList:  # If there are any continuity faults, put header
-        continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
-        continuityFaultHeader.grid(row=1, column=0, columnspan=2, pady=5)
 
     hypotFaultList = {}
+    hypotFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
+    hypotFaultHeader.grid(row=1, column=3, columnspan=2, pady=5)
     for cavity, value in cavityHypotSuccesses.items():
         if not value:  # If failed continuity test
             logger.info('Hypot fail on Cavity: ' + str(cavity))
             hypotFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
             hypotFaultList[cavity].grid(row=cavity + 2, column=3)
-    if hypotFaultList:  # If there are any hypot faults, put header
-        continuityFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
-        continuityFaultHeader.grid(row=1, column=3, columnspan=2, pady=5)
+
+
 
 
 def reset(closeWindow, window):
