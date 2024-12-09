@@ -414,6 +414,22 @@ def fault():
             hypotFaultList[cavity].grid(row=cavity + 2, column=3)
 
 
+def non_fault():
+    nonFaultWindow = tk.Toplevel(root)
+    nonFaultWindow.geometry('700x350')
+    nonFaultWindow.title('Test Complete')
+    nonFaultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
+    nonFaultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
+    nonFaultWindow.configure(bg=backgroundColor)
+    nonFaultWindow.lift()
+
+    nonFaultLabel = tk.Label(nonFaultWindow, text='All Parts Good', font=helv, fg=textColor, bg=backgroundColor)
+    nonFaultLabel.place(x=100, y=50)
+
+    nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat', width=7,
+                                 height=2, font=helvmedium)
+    nonFaultResetButton.place(x=100, y=100)
+
 
 
 def reset(closeWindow, window):
@@ -484,7 +500,7 @@ def start():
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         fault()
     else:
-        reset(closeWindow=False, window=False)
+        non_fault()
 
 
 def start_start():  # This is to put the main loop on a separate thread so it can be emergency stopped
