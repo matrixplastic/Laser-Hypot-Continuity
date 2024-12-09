@@ -428,8 +428,7 @@ def non_fault():
     nonFaultLabel = tk.Label(nonFaultWindow, text='All Parts Good', font=helv, fg=textColor, bg=nonFaultBackgroundColor)
     nonFaultLabel.place(x=100, y=50)
 
-    nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat', width=7,
-                                 height=2, font=helvmedium)
+    nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
     nonFaultResetButton.place(x=100, y=100)
 
 
@@ -465,7 +464,7 @@ def start():
     for cavity, value in runCavity.items():
         cavitynum = ''.join([char for char in cavity if char.isdigit()])
         cavitynum = int(cavitynum)
-        if value.get() == 1:
+        if value.get() == 1:    # If cavity Enabled
             print('Running Cavity: ' + str(cavitynum))
             logger.info('Running Cavity: ' + str(cavitynum))
 
@@ -490,6 +489,9 @@ def start():
             switchDriver2.Execution.DisableAllChannels()
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
+        else: # If cavity Disabled
+            cavityContinuitySuccesses[cavitynum] = 2  # Dont show on fault window, but don't do other functions either
+            cavityHypotSuccesses[cavitynum] = 2  # Dont show on fault window, but don't do other functions either
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
@@ -556,8 +558,6 @@ def continuity_setup(cavitynum):
         switchDriver = switchDriver2
         cavitynum -= 5 # Reduce value for proper switch port assignments
 
-    # After the multiplexer was configured, the safety or ground bond tester could start output for ground bond test on those connections.
-    time.sleep(1)
 
     # Enable Return (Low) channels
     rtnChannel = 2 * cavitynum - 1
@@ -566,7 +566,7 @@ def continuity_setup(cavitynum):
     switchDriver.Execution.ConfigureContinuityChannels({16})
     switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
-    time.sleep(1)
+    time.sleep(0.5)
 
     logger.info('Continuity Setup Done')
     print('Continuity Setup Done')
@@ -587,7 +587,7 @@ def hypot_setup(cavitynum):
     switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
 
     # After the multiplexer was configured, the safety tester could start output for withstand test on those connections.
-    time.sleep(1)
+    time.sleep(0.5)
 
     logger.info('Hypot Setup Done')
     print('Hypot Setup Done')
