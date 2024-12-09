@@ -385,10 +385,11 @@ def fault():
     faultWindow.title('Part Fault')
     faultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
     faultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
-    faultWindow.configure(bg=backgroundColor)
+    faultBackgroundColor = '#DE3C4B'
+    faultWindow.configure(bg=faultBackgroundColor)
     faultWindow.lift()
 
-    faultLabel = tk.Label(faultWindow, text='Cavity failed a test', font=helv, fg=textColor, bg=backgroundColor)
+    faultLabel = tk.Label(faultWindow, text='Cavity failed a test', font=helv, fg=textColor, bg=faultBackgroundColor)
     faultLabel.grid(row=0, column=2, pady=5)
 
     faultResetButton = tk.Button(faultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=faultWindow), bg='#000000', fg=textColor, relief='flat', width=7,
@@ -396,21 +397,21 @@ def fault():
     faultResetButton.grid(row=13, column=2, padx=3, pady=3)
 
     continuityFaultList = {}
-    continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
+    continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=faultBackgroundColor)
     continuityFaultHeader.grid(row=1, column=0, columnspan=2, pady=5)
     for cavity, value in cavityContinuitySuccesses.items():
         if not value:  # If failed continuity test
             logger.info('Continuity fail on Cavity: ' + str(cavity))
-            continuityFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
+            continuityFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=faultBackgroundColor)
             continuityFaultList[cavity].grid(row=cavity + 2, column=0)
 
     hypotFaultList = {}
-    hypotFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=backgroundColor)
+    hypotFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=faultBackgroundColor)
     hypotFaultHeader.grid(row=1, column=3, columnspan=2, pady=5)
     for cavity, value in cavityHypotSuccesses.items():
         if not value:  # If failed continuity test
             logger.info('Hypot fail on Cavity: ' + str(cavity))
-            hypotFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=backgroundColor)
+            hypotFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=faultBackgroundColor)
             hypotFaultList[cavity].grid(row=cavity + 2, column=3)
 
 
@@ -420,10 +421,11 @@ def non_fault():
     nonFaultWindow.title('Test Complete')
     nonFaultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
     nonFaultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
-    nonFaultWindow.configure(bg=backgroundColor)
+    nonFaultBackgroundColor = '#769C1C'
+    nonFaultWindow.configure(bg=nonFaultBackgroundColor)
     nonFaultWindow.lift()
 
-    nonFaultLabel = tk.Label(nonFaultWindow, text='All Parts Good', font=helv, fg=textColor, bg=backgroundColor)
+    nonFaultLabel = tk.Label(nonFaultWindow, text='All Parts Good', font=helv, fg=textColor, bg=nonFaultBackgroundColor)
     nonFaultLabel.place(x=100, y=50)
 
     nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat', width=7,
