@@ -496,6 +496,9 @@ def start():
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
             laser(cavitynum)
+        else:
+            print('Laser Disabled. Skipping Cavity: ' + str(cavitynum))
+            logger.info('Laser Disabled. Skipping Cavity: ' + str(cavitynum))
         print(f"Continuity results: {cavityContinuitySuccesses}")
         logger.info(f"Continuity results: {cavityContinuitySuccesses}")
         print(f"Hypot results:      {cavityHypotSuccesses}")
