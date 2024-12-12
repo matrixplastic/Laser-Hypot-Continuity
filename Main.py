@@ -527,26 +527,21 @@ def stop():
         switchDriver1.Execution.DisableAllChannels()
         switchDriver2.Execution.DisableAllChannels()
         close_drivers()
-        root.quit()
-        root.destroy()
-        sys.exit()
+        print('Program exited cleanly')
+        # noinspection PyProtectedMember
+        os._exit(os.EX_OK)  # Force exits program with status OK
     except Exception as ex:
         logger.error(f"Error during emergency stop!: {ex}")
         print(f"Error during emergency stop!: {ex}")
-        switchDriver1.Execution.DisableAllChannels()
-        switchDriver2.Execution.DisableAllChannels()
         close_drivers()
-        root.quit()
-        root.destroy()
-        sys.exit()
+        # noinspection PyProtectedMember
+        os._exit(os.EX_OK)  # Force exits program with status OK
     finally:
         # Ensure that the Tkinter main loop exits cleanly
         logger.error('Hit finally in emergency stop!')
         print('Hit finally in emergency stop!')
-        close_drivers()
-        root.quit()
-        root.destroy()
-        sys.exit()
+        # noinspection PyProtectedMember
+        os._exit(os.EX_OK)  # Force exits program with status OK
 
 
 def on_stop_button_clicked():
