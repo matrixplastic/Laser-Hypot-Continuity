@@ -601,19 +601,29 @@ def hypot_execution(continuityTest, cavityNum):
     if continuityTest:
         try:
             hypotDriver.Files.Create(1, 'LHCcont')
+            print(f'Continuity test created')
+            logger.info(f'Continuity test created')
         except Exception as ex:
-            print(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
-            logger.error(f'Missing Continuity File. Creating a new one, or Issue: {ex}')
+            print(f'Continuity test exists, or Issue: {ex}')
+            logger.info(f'Continuity test exists, or Issue: {ex}')
             hypotDriver.Files.Delete(1)
             hypotDriver.Files.Create(1, 'LHCcont')
+        finally:
+            print(f'Unable to create continuity test. ERROR')
+            logger.error(f'Unable to create continuity test. ERROR')
     else:
         try:
             hypotDriver.Files.Create(2, 'LHChypot')
+            print(f'Hypot test created')
+            logger.info(f'Hypot test created')
         except Exception as ex:
-            print(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
-            logger.error(f'Missing Hypot File. Creating a new one, or Issue: {ex}')
+            print(f'Hypot test exists, or Issue: {ex}')
+            logger.info(f'Hypot test exists, or Issue: {ex}')
             hypotDriver.Files.Delete(2)
             hypotDriver.Files.Create(2, 'LHChypot')
+        finally:
+            print(f'Unable to create hypot test. ERROR')
+            logger.error(f'Unable to create hypot test. ERROR')
 
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
