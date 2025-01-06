@@ -32,6 +32,7 @@ try:
     # Set the suffix to include the date format and '.log'
     handler.suffix = "%Y-%m-%d_%H-%M-%S.log"
     logger.addHandler(handler)
+    logger.setLevel(10)
 
 except Exception as e:
     print(f'Error creating new Log file: {e}')
