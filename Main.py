@@ -562,7 +562,7 @@ def continuity_setup(cavitynum):
     rtnChannel = 2 * cavitynum - 1
 
     # Enable Continuity (High) channels
-    switchDriver.Execution.ConfigureContinuityChannels({16})
+    switchDriver.Execution.ConfigureContinuityChannels({15})
     switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
     time.sleep(0.5)
