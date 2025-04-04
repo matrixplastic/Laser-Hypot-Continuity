@@ -1143,6 +1143,7 @@ startButton.place(x=50, y=400)
 stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18, height=3, font=helvmedium)
 stopButton.place(x=850, y=875)
 root.protocol("WM_DELETE_WINDOW", on_stop_button_clicked)  # Gracefully shuts down program if window closed
+root.state('zoomed')
 
 progressCanvas = Canvas(root, width=400, height=300, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
 progressCanvas.place(x=1000, y=10)
