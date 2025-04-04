@@ -19,24 +19,29 @@ from logging.handlers import TimedRotatingFileHandler
 # Setup Logging
 errors = []
 print('Setting up Logging')
-scriptDir = os.path.dirname(__file__)  # Absolute dir the script is in
-logname = 'logs/LaserHypotCont.log'
-absFilePath = os.path.join(scriptDir, logname)
-logger = logging.getLogger('Rotating Log')
-try:
-    if not os.path.exists('logs/'):
-        os.makedirs('logs/')
-    # Rotating Logs 1 every day, keep for 30 days
-    handler = TimedRotatingFileHandler(absFilePath, when='h', interval=8, backupCount=30)
-    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-    # Set the suffix to include the date format and '.log'
-    handler.suffix = "%Y-%m-%d_%H-%M-%S.log"
-    logger.addHandler(handler)
-    logger.setLevel(10)
+def resource_path(relative_path: str) -> str:
+    """ Get absolute path to resource, works for dev and PyInstaller """
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
 
-except Exception as e:
-    print(f'Error creating new Log file: {e}')
-    errors.append(f'Error creating new Log file: {e}')
+    return os.path.join(base_path, relative_path)
+
+# Prepare log directory and full path to log file
+log_dir: str = resource_path('logs')
+os.makedirs(log_dir, exist_ok=True)
+
+log_path: str = os.path.join(log_dir, 'LaserHypotCont.log')
+
+# Setup logger
+logger = logging.getLogger('Rotating Log')
+handler = TimedRotatingFileHandler(filename=log_path,when='h',interval=8,backupCount=30)
+handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+handler.suffix = "%Y-%m-%d_%H-%M-%S.log"
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
+
 
 print('Setting up Settings File')
 # Setup Settings File
