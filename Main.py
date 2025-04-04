@@ -1186,7 +1186,7 @@ adminSubmitButton.place(x=1550, y=925)
 adminTextbox.delete(0, 'end') # Clears Password
 adminTextbox.insert(0, adminPassword) # Set Password
 admin_panel()
-save_settings()
+save_settings()hi
 update_colors(canvas)
 for widget in root.winfo_children(): # Close admin window
     if isinstance(widget, tk.Toplevel):
