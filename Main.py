@@ -58,7 +58,7 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotHwid1 = "AQ0465K5A"
+hypotHwid1 = "AQ03JGPEA"
 hypotHwid2 = "A107A3OCA"
 switchHwid1 = "B0007EEKA"
 switchHwid2 = "B0007BEKA"
@@ -612,6 +612,8 @@ def hypot_execution(continuityTest, cavityNum):
         finally:
             print(f'Unable to create continuity test. ERROR')
             logger.error(f'Unable to create continuity test. ERROR')
+            global faultState
+            faultState = True
     else:
         try:
             hypotDriver.Files.Create(2, 'LHChypot')
@@ -1174,8 +1176,15 @@ adminTextbox.place(x=1550, y=900)
 adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000000', fg=textColor, relief='flat', width=9, height=2, font=helvsmall)
 adminSubmitButton.place(x=1550, y=925)
 
+#Test each cavity
+#switchDriver1.Execution.DisableAllChannels()
+#switchDriver2.Execution.DisableAllChannels()
+#continuity_setup(2)
+
+
 try:
     root.mainloop()
+
 except KeyboardInterrupt:
     on_stop_button_clicked()
     sys.exit()
