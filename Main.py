@@ -1182,6 +1182,17 @@ adminTextbox.place(x=1550, y=900)
 adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000000', fg=textColor, relief='flat', width=9, height=2, font=helvsmall)
 adminSubmitButton.place(x=1550, y=925)
 
+# Populate settings.ini file. Need to start admin_panel to populate fields to save
+adminTextbox.delete(0, 'end') # Clears Password
+adminTextbox.insert(0, adminPassword) # Set Password
+admin_panel()
+save_settings()
+update_colors(canvas)
+for widget in root.winfo_children(): # Close admin window
+    if isinstance(widget, tk.Toplevel):
+        widget.destroy()
+adminTextbox.delete(0, 'end')  # Clears Password
+root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
 #switchDriver2.Execution.DisableAllChannels()
