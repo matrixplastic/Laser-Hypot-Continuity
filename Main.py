@@ -82,7 +82,7 @@ except Exception as e:
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
 faultState = False
-cavityContinuitySuccesses = {}
+cavityContinuitySuccesses = {} # 0=Failure, 1=Success, 2=SkippedIfContFail 3=Disabled
 cavityHypotSuccesses = {}
 runCavity = {}
 laserEnabled = {}
@@ -109,8 +109,8 @@ defaultContinuitySettings = {
     'currenthighlimit': 10,  # Current High Limit
     'currentlowlimit': 0.001,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 0.4,  # RampDownTime in seconds
-    'rampdowntime': 0.1,  # Dewll time in seconds
+    'dwelltime': 0.3,  # RampDownTime in seconds
+    'rampdowntime': 0.0,  # Dewll time in seconds
     'arcsenselevel': 1,  # ArcSense level
     'arcdetection': False,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
@@ -340,6 +340,8 @@ def default_hwid_conf(device, hwid):
 
 def save_settings():
     # Write the config object to a file
+    print("Attempting to Save Settings")
+    logger.info("Attempting to Save Settings")
     with open('settings.ini', 'w') as configfile:
         if config['Admin']['Password']:
             global adminPassword
@@ -458,6 +460,7 @@ def reset(closeWindow, window):
 def start():
     startButton["state"] = "disabled"  # Disabled start button so its not running twice at the same time due to threading
     disabledCavs = 0
+    global faultState
     for cavity, value in runCavity.items():
         if value.get() == 0:
             disabledCavs += 1
@@ -496,8 +499,8 @@ def start():
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
         else: # If cavity Disabled
-            cavityContinuitySuccesses[cavitynum] = 2  # Dont show on fault window, but don't do other functions either
-            cavityHypotSuccesses[cavitynum] = 2  # Dont show on fault window, but don't do other functions either
+            cavityContinuitySuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
+            cavityHypotSuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
@@ -509,6 +512,12 @@ def start():
         logger.info(f"Continuity results: {cavityContinuitySuccesses}")
         print(f"Hypot results:      {cavityHypotSuccesses}")
         logger.info(f"Hypot results:      {cavityHypotSuccesses}")
+
+        if cavityContinuitySuccesses[cavitynum] == 0 or cavityHypotSuccesses[cavitynum] == 0:
+            print(f"Fault State True")
+            logger.info(f"Fault State True")
+            faultState = True
+
         print('=================================')  # Separate cavities for testing readability
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         fault()
@@ -570,7 +579,7 @@ def continuity_setup(cavitynum):
     switchDriver.Execution.ConfigureContinuityChannels({15})
     switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
     # After the multiplexer was configured, the safety tester could start dual check on those connections.
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     logger.info('Continuity Setup Done')
     print('Continuity Setup Done')
@@ -591,7 +600,7 @@ def hypot_setup(cavitynum):
     switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
 
     # After the multiplexer was configured, the safety tester could start output for withstand test on those connections.
-    time.sleep(0.5)
+    time.sleep(0.1)
 
     logger.info('Hypot Setup Done')
     print('Hypot Setup Done')
@@ -617,8 +626,7 @@ def hypot_execution(continuityTest, cavityNum):
         finally:
             print(f'Unable to create continuity test. ERROR')
             logger.error(f'Unable to create continuity test. ERROR')
-            global faultState
-            faultState = True
+
     else:
         try:
             hypotDriver.Files.Create(2, 'LHChypot')
@@ -1196,7 +1204,7 @@ root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
 #switchDriver2.Execution.DisableAllChannels()
-#continuity_setup(2)
+#continuity_setup(1)
 
 
 try:
