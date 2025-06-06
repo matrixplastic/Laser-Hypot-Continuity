@@ -65,6 +65,10 @@ It is recommended to disable "Allow the computer to turn off this device to save
 or else they can lose connection and need to be unplugged and replugged<br>
 To install this project, clone the repository and install the required dependencies:
 
+Install IVI Drivers <https://www.ivifoundation.org/Shared-Components/default.html>
+Install Serial Drivers <https://www.ni.com/en/support/downloads/drivers/download.ni-visa.html#565016>
+Install Hardware Drivers according to your model. Instructions are also included <https://www.arisafety.com/support/instrument-drivers>
+
 ```sh
 git clone https://github.com/matrixplastic/Laser-Hypot-Continuity.git
 cd /Path/To/Your/Cloned/Project
