@@ -594,27 +594,28 @@ def read_hypot(hypotDriver, cavityNum):
 
         hypotDriver.System.WriteString('*OPC?\n')
         opcStatus = hypotDriver.System.ReadString()
+
+        continuityFailureTypes = ['CONT. HI-Limit']
+        hypotFailureTypes = ['HI-Limit', 'Short', 'Breakdown']
         if ('1' in opcStatus and lastOpcStatus):
             # Successes
             if output[2] == 'PASS':
                 cavityHypotSuccesses[cavityNum] = 1
-                print('Cavity ' + str(cavityNum) + ' passes hypot')
-                logger.info('Cavity ' + str(cavityNum) + ' passes hypot')
+                print('Cavity ' + str(cavityNum) + ' passes hypot & continuity')
+                logger.info('Cavity ' + str(cavityNum) + ' passes hypot & continuity')
+            elif output[2] in continuityFailureTypes:
+                cavityContinuitySuccesses[cavityNum] = 0
+                print('Cavity ' + str(cavityNum) + ' fails Continuity')
+                logger.info('Cavity ' + str(cavityNum) + ' fails Continuity')
+                faultState = True
+            elif output[2] in hypotFailureTypes:
+                cavityHypotSuccesses[cavityNum] = 0
+                print('Cavity ' + str(cavityNum) + ' fails Hypot')
+                logger.info('Cavity ' + str(cavityNum) + ' fails Hypot')
+                faultState = True
             break
         lastOpcStatus = '1' in opcStatus
         time.sleep(0.1)
-    # Failures checked after loop is broken out of, check if passed if not then set fail.
-    # Might be to look at output[2] last value to determine pass/fail. Not doing to reduce complexity or overwriting correct values
-    if cavityContinuitySuccesses[cavityNum] != 1:
-        cavityContinuitySuccesses[cavityNum] = 0
-        print('Cavity ' + str(cavityNum) + ' fails continuity')
-        logger.info('Cavity ' + str(cavityNum) + ' fails continuity')
-        faultState = True
-    if cavityHypotSuccesses[cavityNum] != 1:
-        cavityHypotSuccesses[cavityNum] = 0
-        print('Cavity ' + str(cavityNum) + ' fails Hypot')
-        logger.info('Cavity ' + str(cavityNum) + ' fails Hypot')
-        faultState = True
 
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
