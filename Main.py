@@ -50,7 +50,6 @@ config['Run Cavity'] = {}
 config['Laser Enabled'] = {}
 config['Admin'] = {}
 config['Hypot'] = {}
-config['Continuity'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
 
@@ -82,29 +81,13 @@ except Exception as e:
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
 faultState = False
-cavityContinuitySuccesses = {} # 0=Failure, 1=Success, 2=SkippedIfContFail 3=Disabled
+cavityContinuitySuccesses = {} # 0=Failure, 1=Success, 2=SkippedIfContFail
 cavityHypotSuccesses = {}
 runCavity = {}
 laserEnabled = {}
 hypotSettings = {}
-continuitySettings = {}
 usbHwids = set()
 defaultHypotSettings = {
-    'voltage': 1000,  # AC Voltage
-    'currenthighlimit': 10,  # Current High Limit
-    'currentlowlimit': 0.001,  # Current Low Limit
-    'rampuptime': 1,  # Ramp up time in seconds
-    'dwelltime': 5,  # RampDownTime in seconds
-    'rampdowntime': 1,  # Dewll time in seconds
-    'arcsenselevel': 1,  # ArcSense level
-    'arcdetection': False,  # Arc detection
-    'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-    'continuitytest': False,  # Continuity test
-    'highlimitresistance': 1.5,  # High limit of the continuity resistance
-    'lowlimitresistance': 0.01,  # Low limit of the continuity resistance
-    'resistanceoffset': 0.5  # Continuity resistance offset
-}
-defaultContinuitySettings = {
     'voltage': 1000,  # AC Voltage
     'currenthighlimit': 10,  # Current High Limit
     'currentlowlimit': 0.001,  # Current Low Limit
@@ -121,9 +104,6 @@ defaultContinuitySettings = {
 }
 
 # Admin Panel Settings Variables
-continuityTkinterObjs = {}
-continuityTkinterObjsLabel = {}
-continuityArcDetectionBool = None
 hypotTkinterObjs = {}
 hypotTkinterObjsLabel = {}
 hypotArcDetectionBool = None
@@ -178,6 +158,8 @@ def concat_port(comPort):
     except Exception as ex:
         logger.error(f'Concat port error with {comPort}: {ex}')
         print(f'Concat port error with {comPort}: {ex}')
+        return None
+
 
 # Avoid using COM# because windows can mix it up
 
@@ -288,7 +270,6 @@ def get_settings():
         logger.error(f"No hypot1 hwid var in settings.ini: {ex}")
         print(f"No hypot1 hwid var in settings.ini: {ex}")
         updateHWIDS['hypot1'] = hypotHwid1
-
     try:
         hypotHwid2 = config['Hardware IDs']['hypot2']
     except Exception as ex:
@@ -311,26 +292,6 @@ def get_settings():
     for device, hwid in updateHWIDS.items():    # Call to write hwids to settings.ini if they're missing
         default_hwid_conf(device, hwid)
 
-    # Continuity
-    for key, defaultValue in defaultContinuitySettings.items():
-        # Make sure values exist
-        if key not in config['Continuity']:
-            value = defaultValue
-        else:
-            value = config['Continuity'][key]
-
-        # Convert to their proper types so the AddACWTest can parse them properly
-        try:
-            if key in ('arcdetection', 'continuitytest'):
-                continuitySettings[key] = bool(value)
-            elif key in ('voltage', 'currenthighlimit', 'currentlowlimit', 'arcsenselevel', 'frequency'):
-                continuitySettings[key] = int(value)
-            elif key in ('rampuptime', 'rampdowntime', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
-                continuitySettings[key] = float(value)
-        except Exception as ex:
-            logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
-            print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
-            errors.append("Error reading Settings.ini file! Delete it, and restart program.")
 
 def default_hwid_conf(device, hwid):
     with open('settings.ini', 'w') as configfile:
@@ -354,12 +315,6 @@ def save_settings():
         for key, value in hypotTkinterObjs.items():
             config['Hypot'][key] = str(value.get())
         config['Hypot']['arcdetection'] = str(hypotArcDetectionBool.get())
-
-        for key, value in continuityTkinterObjs.items():
-            config['Continuity'][key] = str(value.get())
-        config['Continuity']['arcdetection'] = str(continuityArcDetectionBool.get())
-
-
         config.write(configfile)  # Close and save to settings file
     update_colors(canvas)
 
@@ -480,26 +435,16 @@ def start():
             switchDriver1.Execution.DisableAllChannels()
             switchDriver2.Execution.DisableAllChannels()
 
-            continuity_setup(cavitynum)
-            hypot_execution(continuityTest=True, cavityNum=cavitynum)
+            hypot_setup(cavitynum)
+            hypot_execution(cavityNum=cavitynum)
 
             switchDriver1.Execution.DisableAllChannels()
             switchDriver2.Execution.DisableAllChannels()
 
-            if cavityContinuitySuccesses[cavitynum] == 1:
-                hypot_setup(cavitynum)
-                hypot_execution(continuityTest=False, cavityNum=cavitynum)
-            else:
-                print(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
-                logger.info(f'Skipping Hypot on Cavity: {cavitynum} due to failing continuity')
-                cavityHypotSuccesses[cavitynum] = 2 # Dont show on fault window, but don't do other functions either
-
-            switchDriver1.Execution.DisableAllChannels()
-            switchDriver2.Execution.DisableAllChannels()
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
         else: # If cavity Disabled
-            cavityContinuitySuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
+            cavityContinuitySuccesses[cavitynum] = 3
             cavityHypotSuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
             print('Lasering Cavity: ' + str(cavitynum))
@@ -564,27 +509,6 @@ def on_stop_button_clicked():
     stopThread.start()
 
 
-def continuity_setup(cavitynum):
-    if (cavitynum <= 5):  # First sc6540 switch and hypot
-        switchDriver = switchDriver1
-    else:  # Second sc6540 switch and hypot
-        switchDriver = switchDriver2
-        cavitynum -= 5 # Reduce value for proper switch port assignments
-
-
-    # Enable Return (Low) channels
-    rtnChannel = 2 * cavitynum - 1
-
-    # Enable Continuity (High) channels
-    switchDriver.Execution.ConfigureContinuityChannels({15})
-    switchDriver.Execution.ConfigureReturnChannels({rtnChannel})
-    # After the multiplexer was configured, the safety tester could start dual check on those connections.
-    time.sleep(0.1)
-
-    logger.info('Continuity Setup Done')
-    print('Continuity Setup Done')
-
-
 def hypot_setup(cavitynum):
     if (cavitynum <= 5):  # First sc6540 switch and hypot
         switchDriver = switchDriver1
@@ -606,102 +530,61 @@ def hypot_setup(cavitynum):
     print('Hypot Setup Done')
 
 
-def hypot_execution(continuityTest, cavityNum):
+def hypot_execution(cavityNum):
     if cavityNum <= 5:
         hypotDriver = hypotDriver1
     else:
         hypotDriver = hypotDriver2
 
     # Create file
-    if continuityTest:
-        try:
-            hypotDriver.Files.Create(1, 'LHCcont')
-            print(f'Continuity test created')
-            logger.info(f'Continuity test created')
-        except Exception as ex:
-            print(f'Continuity test exists, or Issue: {ex}')
-            logger.info(f'Continuity test exists, or Issue: {ex}')
-            hypotDriver.Files.Delete(1)
-            hypotDriver.Files.Create(1, 'LHCcont')
-        finally:
-            print(f'Unable to create continuity test. ERROR')
-            logger.error(f'Unable to create continuity test. ERROR')
-
-    else:
-        try:
-            hypotDriver.Files.Create(2, 'LHChypot')
-            print(f'Hypot test created')
-            logger.info(f'Hypot test created')
-        except Exception as ex:
-            print(f'Hypot test exists, or Issue: {ex}')
-            logger.info(f'Hypot test exists, or Issue: {ex}')
-            hypotDriver.Files.Delete(2)
-            hypotDriver.Files.Create(2, 'LHChypot')
-        finally:
-            print(f'Unable to create hypot test. ERROR')
-            logger.error(f'Unable to create hypot test. ERROR')
+    try:
+        hypotDriver.Files.Create(2, 'LHChypot')
+        print(f'Hypot test created')
+        logger.info(f'Hypot test created')
+    except Exception as ex:
+        print(f'Hypot test exists, or Issue: {ex}')
+        logger.info(f'Hypot test exists, or Issue: {ex}')
+        hypotDriver.Files.Delete(2)
+        hypotDriver.Files.Create(2, 'LHChypot')
+    finally:
+        print(f'Unable to create hypot test. ERROR')
+        logger.error(f'Unable to create hypot test. ERROR')
 
     # Hypot manual results read on page 83
     #   Add ACW test item by AddACWTest()
     try:
-        if (continuityTest):
-            # Add an ACW step and then edit parameters
-            hypotDriver.Steps.AddACWTestWithDefaults()
-            hypotDriver.Parameters.Voltage = continuitySettings['voltage']
-            hypotDriver.Parameters.HighLimit = continuitySettings['currenthighlimit']
-            hypotDriver.Parameters.LowLimit = continuitySettings['currentlowlimit']
-            hypotDriver.Parameters.RampUp = continuitySettings['rampuptime']
-            hypotDriver.Parameters.Dwell = continuitySettings['dwelltime']
-            hypotDriver.Parameters.RampDown = continuitySettings['rampdowntime']
-            hypotDriver.Parameters.ArcSense = continuitySettings['arcsenselevel']
-            hypotDriver.Parameters.ArcDetectEnabled = continuitySettings['arcdetection']
-            hypotDriver.Parameters.Frequency = continuitySettings['frequency']
-            hypotDriver.Parameters.ContinuityEnabled = continuitySettings['continuitytest']
-            hypotDriver.Parameters.ContHiLimit = continuitySettings['highlimitresistance']
-            hypotDriver.Parameters.ContLoLimit = continuitySettings['lowlimitresistance']
-            hypotDriver.Parameters.ContOffset = continuitySettings['resistanceoffset']
-        else:
-            hypotDriver.Steps.AddACWTestWithDefaults()
-            hypotDriver.Parameters.Voltage = hypotSettings['voltage']
-            hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
-            hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
-            hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
-            hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
-            hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
-            hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
-            hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
-            hypotDriver.Parameters.Frequency = hypotSettings['frequency']
-            hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
-            hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
-            hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
-            hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
+        hypotDriver.Steps.AddACWTestWithDefaults()
+        hypotDriver.Parameters.Voltage = hypotSettings['voltage']
+        hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
+        hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
+        hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
+        hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
+        hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
+        hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
+        hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
+        hypotDriver.Parameters.Frequency = hypotSettings['frequency']
+        hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
+        hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
+        hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
+        hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
 
         hypotDriver.Files.Save()
         # Start test
         hypotDriver.Execution.Execute()
         # Output Results
-        read_hypot(continuityTest=continuityTest, hypotDriver=hypotDriver, cavityNum=cavityNum)
+        read_hypot(hypotDriver=hypotDriver, cavityNum=cavityNum)
         # Reset test and close connection
     except Exception as ex:
-        if continuityTest:
-            logger.error('Exception occured at Continuity execution: ' + str(ex))
-            errors.append('Exception occured at Continuity execution: ' + str(ex))
-            print('Exception occured at Continuity execution: ' + str(ex))
-        else:
-            logger.error('Exception occured at Hypot execution: ' + str(ex))
-            errors.append('Exception occured at Hypot execution: ' + str(ex))
-            print('Exception occured at Hypot execution: ' + str(ex))
+        logger.error('Exception occured at Hypot execution: ' + str(ex))
+        errors.append('Exception occured at Hypot execution: ' + str(ex))
+        print('Exception occured at Hypot execution: ' + str(ex))
+
     hypotDriver.Execution.Abort()
-
-    if (continuityTest):
-        print('Continuity Execution Done')
-        logger.info('Continuity Execution Done')
-    else:
-        print('Hypot Execution Done')
-        logger.info('Hypot Execution Done')
+    print('Hypot Execution Done')
+    logger.info('Hypot Execution Done')
 
 
-def read_hypot(continuityTest, hypotDriver, cavityNum):
+def read_hypot(hypotDriver, cavityNum):
     global faultState
     lastOpcStatus = False
     while (True):
@@ -714,25 +597,20 @@ def read_hypot(continuityTest, hypotDriver, cavityNum):
         if ('1' in opcStatus and lastOpcStatus):
             # Successes
             if output[2] == 'PASS':
-                if continuityTest:
-                    cavityContinuitySuccesses[cavityNum] = 1
-                    print('Cavity ' + str(cavityNum) + ' passes continuity')
-                    logger.info('Cavity ' + str(cavityNum) + ' passes continuity')
-                else:
-                    cavityHypotSuccesses[cavityNum] = 1
-                    print('Cavity ' + str(cavityNum) + ' passes hypot')
-                    logger.info('Cavity ' + str(cavityNum) + ' passes hypot')
+                cavityHypotSuccesses[cavityNum] = 1
+                print('Cavity ' + str(cavityNum) + ' passes hypot')
+                logger.info('Cavity ' + str(cavityNum) + ' passes hypot')
             break
         lastOpcStatus = '1' in opcStatus
         time.sleep(0.1)
     # Failures checked after loop is broken out of, check if passed if not then set fail.
     # Might be to look at output[2] last value to determine pass/fail. Not doing to reduce complexity or overwriting correct values
-    if continuityTest and cavityContinuitySuccesses[cavityNum] != 1:
+    if cavityContinuitySuccesses[cavityNum] != 1:
         cavityContinuitySuccesses[cavityNum] = 0
         print('Cavity ' + str(cavityNum) + ' fails continuity')
         logger.info('Cavity ' + str(cavityNum) + ' fails continuity')
         faultState = True
-    elif continuityTest is False and cavityHypotSuccesses[cavityNum] != 1:
+    if cavityHypotSuccesses[cavityNum] != 1:
         cavityHypotSuccesses[cavityNum] = 0
         print('Cavity ' + str(cavityNum) + ' fails Hypot')
         logger.info('Cavity ' + str(cavityNum) + ' fails Hypot')
@@ -856,84 +734,6 @@ def admin_panel():
         # Breaks up view a bit, improves legibility
         verticalSeparator = Frame(adminWindow, bg="red", height=800, width=2)
         verticalSeparator.place(x=710, y=0)
-
-        # Continuity and Hypot Settings
-
-        continuityTkinterObjsLabel['header'] = tk.Label(adminWindow, text='Continuity Settings', font=helv, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['header'].grid(row=0, column=9, columnspan=2, padx=30)
-
-        continuityTkinterObjsLabel['voltage'] = tk.Label(adminWindow, text='Voltage', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['voltage'].grid(row=1, column=9, padx=20)
-        continuityTkinterObjs['voltage'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=5000, increment=10)
-        continuityTkinterObjs['voltage'].set(continuitySettings['voltage'])
-        continuityTkinterObjs['voltage'].grid(row=1, column=10, padx=20)
-
-        continuityTkinterObjsLabel['currenthighlimit'] = tk.Label(adminWindow, text='Current High Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['currenthighlimit'].grid(row=2, column=9, padx=20)
-        continuityTkinterObjs['currenthighlimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=20, increment=1)
-        continuityTkinterObjs['currenthighlimit'].set(continuitySettings['currenthighlimit'])
-        continuityTkinterObjs['currenthighlimit'].grid(row=2, column=10, padx=20)
-
-        continuityTkinterObjsLabel['currentlowlimit'] = tk.Label(adminWindow, text='Current Low Limit', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['currentlowlimit'].grid(row=3, column=9, padx=20)
-        continuityTkinterObjs['currentlowlimit'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=9, increment=1)
-        continuityTkinterObjs['currentlowlimit'].set(continuitySettings['currentlowlimit'])
-        continuityTkinterObjs['currentlowlimit'].grid(row=3, column=10, padx=20)
-
-        continuityTkinterObjsLabel['rampuptime'] = tk.Label(adminWindow, text='Ramp Up Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['rampuptime'].grid(row=4, column=9, padx=20)
-        continuityTkinterObjs['rampuptime'] = ttk.Spinbox(adminWindow, width=10, from_=0.1, to=999, increment=0.1)
-        continuityTkinterObjs['rampuptime'].set(continuitySettings['rampuptime'])
-        continuityTkinterObjs['rampuptime'].grid(row=4, column=10, padx=20)
-
-        continuityTkinterObjsLabel['rampdowntime'] = tk.Label(adminWindow, text='Ramp Down Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['rampdowntime'].grid(row=5, column=9, padx=20)
-        continuityTkinterObjs['rampdowntime'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=999, increment=0.1)
-        continuityTkinterObjs['rampdowntime'].set(continuitySettings['rampdowntime'])
-        continuityTkinterObjs['rampdowntime'].grid(row=5, column=10, padx=20)
-
-        continuityTkinterObjsLabel['dwelltime'] = tk.Label(adminWindow, text='Dwell Time', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['dwelltime'].grid(row=6, column=9, padx=20)
-        continuityTkinterObjs['dwelltime'] = ttk.Spinbox(adminWindow, width=10, from_=0.3, to=999, increment=0.1)
-        continuityTkinterObjs['dwelltime'].set(continuitySettings['dwelltime'])
-        continuityTkinterObjs['dwelltime'].grid(row=6, column=10, padx=20)
-
-        continuityTkinterObjsLabel['arcsenselevel'] = tk.Label(adminWindow, text='Arc Sense', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['arcsenselevel'].grid(row=7, column=9, padx=20)
-        continuityTkinterObjs['arcsenselevel'] = ttk.Spinbox(adminWindow, width=10, from_=1, to=9, increment=1)
-        continuityTkinterObjs['arcsenselevel'].set(continuitySettings['arcsenselevel'])
-        continuityTkinterObjs['arcsenselevel'].grid(row=7, column=10, padx=20)
-
-        def print_value():  # Have to have command parameter in radio buttons or default value doesn't select properly. Possible tkinter bug
-            print("Arc Detection:", continuityArcDetectionBool.get())
-
-        global continuityArcDetectionBool
-        continuityArcDetectionBool = tk.BooleanVar(value=continuitySettings['arcdetection'])
-
-        continuityTkinterObjsLabel['arcdetection'] = tk.Label(adminWindow, text='Arc Detection', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['arcdetection'].grid(row=8, column=9, padx=20)
-        continuityArcDetectionRadioTrue = ttk.Radiobutton(adminWindow, text='Yes', value=True, variable=continuityArcDetectionBool, command=print_value)
-        continuityArcDetectionRadioTrue.grid(row=8, column=10, padx=20)
-        continuityArcDetectionRadioFalse = ttk.Radiobutton(adminWindow, text='No', value=False, variable=continuityArcDetectionBool, command=print_value)
-        continuityArcDetectionRadioFalse.grid(row=8, column=11, padx=20)
-
-        continuityTkinterObjsLabel['highlimitresistance'] = tk.Label(adminWindow, text='High Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['highlimitresistance'].grid(row=9, column=9, padx=20)
-        continuityTkinterObjs['highlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=1.5, increment=0.01)
-        continuityTkinterObjs['highlimitresistance'].set(continuitySettings['highlimitresistance'])
-        continuityTkinterObjs['highlimitresistance'].grid(row=9, column=10, padx=20)
-
-        continuityTkinterObjsLabel['lowlimitresistance'] = tk.Label(adminWindow, text='Low Limit Resistance', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['lowlimitresistance'].grid(row=10, column=9, padx=20)
-        continuityTkinterObjs['lowlimitresistance'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=1.5, increment=0.01)
-        continuityTkinterObjs['lowlimitresistance'].set(continuitySettings['lowlimitresistance'])
-        continuityTkinterObjs['lowlimitresistance'].grid(row=10, column=10, padx=20)
-
-        continuityTkinterObjsLabel['resistanceoffset'] = tk.Label(adminWindow, text='Resistance Offset', font=helvsmall, fg=textColor, bg=backgroundColor)
-        continuityTkinterObjsLabel['resistanceoffset'].grid(row=11, column=9, padx=20)
-        continuityTkinterObjs['resistanceoffset'] = ttk.Spinbox(adminWindow, width=10, from_=0, to=0.5, increment=0.01)
-        continuityTkinterObjs['resistanceoffset'].set(continuitySettings['resistanceoffset'])
-        continuityTkinterObjs['resistanceoffset'].grid(row=11, column=10, padx=20)
 
         # Hypot Settings
 
