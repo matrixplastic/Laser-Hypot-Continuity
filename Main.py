@@ -62,7 +62,7 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotHwid1 = "AQ03JGPEA"
+hypotHwid1 = "AQ0465JUA"
 hypotHwid2 = "A107A3OCA"
 switchHwid1 = "B0007EEKA"
 switchHwid2 = "B0007BEKA"
@@ -595,20 +595,23 @@ def read_hypot(hypotDriver, cavityNum):
         hypotDriver.System.WriteString('*OPC?\n')
         opcStatus = hypotDriver.System.ReadString()
 
-        continuityFailureTypes = ['CONT. HI-Limit']
+        continuityFailureTypes = ['Cont. Hi-Lmt']
         hypotFailureTypes = ['HI-Limit', 'Short', 'Breakdown']
         if ('1' in opcStatus and lastOpcStatus):
             # Successes
             if output[2] == 'PASS':
                 cavityHypotSuccesses[cavityNum] = 1
+                cavityContinuitySuccesses[cavityNum] = 1
                 print('Cavity ' + str(cavityNum) + ' passes hypot & continuity')
                 logger.info('Cavity ' + str(cavityNum) + ' passes hypot & continuity')
             elif output[2] in continuityFailureTypes:
                 cavityContinuitySuccesses[cavityNum] = 0
+                cavityHypotSuccesses[cavityNum] = 2
                 print('Cavity ' + str(cavityNum) + ' fails Continuity')
                 logger.info('Cavity ' + str(cavityNum) + ' fails Continuity')
                 faultState = True
             elif output[2] in hypotFailureTypes:
+                cavityContinuitySuccesses[cavityNum] = 1
                 cavityHypotSuccesses[cavityNum] = 0
                 print('Cavity ' + str(cavityNum) + ' fails Hypot')
                 logger.info('Cavity ' + str(cavityNum) + ' fails Hypot')
