@@ -411,10 +411,49 @@ def reset(closeWindow, window):
     time.sleep(1)  # Make sure double clicks dont accidentally start it again
     startButton["state"] = "normal"  # Re-enables start button
 
+def create_hypot_tests():
+    for hypotDriver in [hypotDriver1, hypotDriver2]:
+        # Create file
+        try:
+            hypotDriver.Files.Create(2, 'LHChypot')
+            print(f'Hypot test created')
+            logger.info(f'Hypot test created')
+        except Exception as ex:
+            print(f'Hypot test exists, or Issue: {ex}')
+            logger.info(f'Hypot test exists, or Issue: {ex}')
+            hypotDriver.Files.Delete(2)
+            hypotDriver.Files.Create(2, 'LHChypot')
+        finally:
+            print(f'Unable to create hypot test. ERROR')
+            logger.error(f'Unable to create hypot test. ERROR')
+
+        # Hypot manual results read on page 83
+        #   Add ACW test item by AddACWTest()
+        try:
+            hypotDriver.Steps.AddACWTestWithDefaults()
+            hypotDriver.Parameters.Voltage = hypotSettings['voltage']
+            hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
+            hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
+            hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
+            hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
+            hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
+            hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
+            hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
+            hypotDriver.Parameters.Frequency = hypotSettings['frequency']
+            hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
+            hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
+            hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
+            hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
+            hypotDriver.Files.Save()
+        except Exception as ex:
+            logger.error(f"Error creating hypot test on hypot1: {ex}")
+            print(f"Error creating hypot test on hypot1: {ex}")
+
 
 def start():
     startButton["state"] = "disabled"  # Disabled start button so its not running twice at the same time due to threading
     disabledCavs = 0
+    create_hypot_tests()
     global faultState
     for cavity, value in runCavity.items():
         if value.get() == 0:
@@ -536,44 +575,11 @@ def hypot_execution(cavityNum):
     else:
         hypotDriver = hypotDriver2
 
-    # Create file
     try:
-        hypotDriver.Files.Create(2, 'LHChypot')
-        print(f'Hypot test created')
-        logger.info(f'Hypot test created')
-    except Exception as ex:
-        print(f'Hypot test exists, or Issue: {ex}')
-        logger.info(f'Hypot test exists, or Issue: {ex}')
-        hypotDriver.Files.Delete(2)
-        hypotDriver.Files.Create(2, 'LHChypot')
-    finally:
-        print(f'Unable to create hypot test. ERROR')
-        logger.error(f'Unable to create hypot test. ERROR')
-
-    # Hypot manual results read on page 83
-    #   Add ACW test item by AddACWTest()
-    try:
-        hypotDriver.Steps.AddACWTestWithDefaults()
-        hypotDriver.Parameters.Voltage = hypotSettings['voltage']
-        hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
-        hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
-        hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
-        hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
-        hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
-        hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
-        hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
-        hypotDriver.Parameters.Frequency = hypotSettings['frequency']
-        hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
-        hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
-        hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
-        hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
-
-        hypotDriver.Files.Save()
         # Start test
         hypotDriver.Execution.Execute()
         # Output Results
         read_hypot(hypotDriver=hypotDriver, cavityNum=cavityNum)
-        # Reset test and close connection
     except Exception as ex:
         logger.error('Exception occured at Hypot execution: ' + str(ex))
         errors.append('Exception occured at Hypot execution: ' + str(ex))
@@ -596,7 +602,7 @@ def read_hypot(hypotDriver, cavityNum):
         opcStatus = hypotDriver.System.ReadString()
 
         continuityFailureTypes = ['Cont. Hi-Lmt']
-        hypotFailureTypes = ['HI-Limit', 'Short', 'Breakdown']
+        hypotFailureTypes = ['HI-LIMIT', 'Short', 'Breakdown']
         if ('1' in opcStatus and lastOpcStatus):
             # Successes
             if output[2] == 'PASS':
