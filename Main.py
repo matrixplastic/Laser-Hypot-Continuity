@@ -70,7 +70,7 @@ switchHwid2 = "B0007BEKA"
 
 # Setup Laser Connectivity
 laserSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
-laserIP = '10.10.0.167'
+laserIP = '192.180.0.11'
 try:
     laserSocket.connect((laserIP, 50000))  # IP and Port number for laser
 except Exception as e:
@@ -1014,7 +1014,7 @@ root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
 #switchDriver2.Execution.DisableAllChannels()
-#continuity_setup(1)
+#hypot_setup(2)
 
 
 try:
