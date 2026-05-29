@@ -416,25 +416,37 @@ def create_hypot_tests():
     for hypotDriver in [hypotDriver1, hypotDriver2]:
         # Hypot manual results read on page 83
         #   Add ACW test item by AddACWTest()
+        testDeleted = 0
         try:
-            hypotDriver.Steps.AddACWTestWithDefaults()
-            hypotDriver.Parameters.Voltage = hypotSettings['voltage']
-            hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
-            hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
-            hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
-            hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
-            hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
-            hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
-            hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
-            hypotDriver.Parameters.Frequency = hypotSettings['frequency']
-            hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
-            hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
-            hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
-            hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
-            hypotDriver.Files.Save()
+            hypotDriver.Files.Delete(1)
+            testDeleted = 1
         except Exception as ex:
-            logger.error(f"Error creating hypot test on hypot1: {ex}")
-            print(f"Error creating hypot test on hypot1: {ex}")
+            logger.error(f"Error deleting hypot test on hypot1: {ex}")
+            print(f"Error deleting hypot test on hypot1: {ex}")
+        if testDeleted == 1:
+            try:
+                hypotDriver.Steps.AddACWTestWithDefaults()
+                hypotDriver.Parameters.Voltage = hypotSettings['voltage']
+                hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
+                hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
+                hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
+                hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
+                hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
+                hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
+                hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
+                hypotDriver.Parameters.Frequency = hypotSettings['frequency']
+                hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
+                hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
+                hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
+                hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
+                hypotDriver.Files.Save()
+            except Exception as ex:
+                logger.error(f"Error creating hypot test on hypot1: {ex}")
+                print(f"Error creating hypot test on hypot1: {ex}")
+        else:
+            logger.error(f"Failed to delete test, ending program")
+            print(f"Failed to delete test, ending program")
+            stop()
 
 
 def start():
