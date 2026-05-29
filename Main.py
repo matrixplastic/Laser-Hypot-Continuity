@@ -62,8 +62,9 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-hypotHwid1 = "AQ0465JUA"
-hypotHwid2 = "A107A3OCA"
+
+hypotHwid1 = "BG01PD8AA"
+hypotHwid2 = "BG01PFCQA"
 switchHwid1 = "B0007EEKA"
 switchHwid2 = "B0007BEKA"
 
@@ -90,12 +91,12 @@ usbHwids = set()
 defaultHypotSettings = {
     'voltage': 1000,  # AC Voltage
     'currenthighlimit': 10,  # Current High Limit
-    'currentlowlimit': 0.001,  # Current Low Limit
+    'currentlowlimit': 0,  # Current Low Limit
     'rampuptime': 0.1,  # Ramp up time in seconds
     'dwelltime': 0.3,  # RampDownTime in seconds
     'rampdowntime': 0.0,  # Dewll time in seconds
     'arcsenselevel': 1,  # ArcSense level
-    'arcdetection': False,  # Arc detection
+    'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': True,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
@@ -413,20 +414,6 @@ def reset(closeWindow, window):
 
 def create_hypot_tests():
     for hypotDriver in [hypotDriver1, hypotDriver2]:
-        # Create file
-        try:
-            hypotDriver.Files.Create(2, 'LHChypot')
-            print(f'Hypot test created')
-            logger.info(f'Hypot test created')
-        except Exception as ex:
-            print(f'Hypot test exists, or Issue: {ex}')
-            logger.info(f'Hypot test exists, or Issue: {ex}')
-            hypotDriver.Files.Delete(2)
-            hypotDriver.Files.Create(2, 'LHChypot')
-        finally:
-            print(f'Unable to create hypot test. ERROR')
-            logger.error(f'Unable to create hypot test. ERROR')
-
         # Hypot manual results read on page 83
         #   Add ACW test item by AddACWTest()
         try:
@@ -1014,7 +1001,7 @@ root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
 #switchDriver2.Execution.DisableAllChannels()
-#hypot_setup(2)
+#hypot_setup(10)
 
 
 try:
