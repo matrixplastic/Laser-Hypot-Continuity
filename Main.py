@@ -15,7 +15,6 @@ import serial.tools.list_ports
 import socket
 from logging.handlers import TimedRotatingFileHandler
 
-
 # Setup Logging
 errors = []
 print('Setting up Logging')
@@ -36,12 +35,11 @@ log_path: str = os.path.join(log_dir, 'LaserHypotCont.log')
 
 # Setup logger
 logger = logging.getLogger('Rotating Log')
-handler = TimedRotatingFileHandler(filename=log_path,when='h',interval=8,backupCount=30)
+handler = TimedRotatingFileHandler(filename=log_path, when='h', interval=8, backupCount=30)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 handler.suffix = "%Y-%m-%d_%H-%M-%S.log"
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
-
 
 print('Setting up Settings File')
 # Setup Settings File
@@ -53,7 +51,6 @@ config['Hypot'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
 
-
 print('Setting up Drivers')
 # Driver Variables
 cc.GetModule('SC6540.dll')
@@ -62,12 +59,10 @@ from comtypes.gen import SC6540Lib
 cc.GetModule('ARI38XX_64.dll')
 from comtypes.gen import ARI38XXLib
 
-
 hypotHwid1 = "BG01PD8AA"
 hypotHwid2 = "BG01PFCQA"
 switchHwid1 = "B0007EEKA"
 switchHwid2 = "B0007BEKA"
-
 
 # Setup Laser Connectivity
 laserSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
@@ -82,7 +77,7 @@ except Exception as e:
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
 faultState = False
-cavityContinuitySuccesses = {} # 0=Failure, 1=Success, 2=SkippedIfContFail
+cavityContinuitySuccesses = {}  # 0=Failure, 1=Success, 2=SkippedIfContFail
 cavityHypotSuccesses = {}
 runCavity = {}
 laserEnabled = {}
@@ -176,7 +171,6 @@ portNumSC1 = concat_port(switchComPort1)
 switchComPort2 = find_com_port_by_hwid_number(switchHwid2)
 portNumSC2 = concat_port(switchComPort2)
 
-
 # Driver Setup
 try:
     hypotDriver1 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
@@ -255,9 +249,9 @@ def get_settings():
         try:
             if key in ('arcdetection', 'continuitytest'):
                 hypotSettings[key] = bool(value)
-            elif key in ('voltage', 'currenthighlimit', 'currentlowlimit', 'arcsenselevel', 'frequency'):
+            elif key in ('voltage', 'arcsenselevel', 'frequency'):
                 hypotSettings[key] = int(value)
-            elif key in ('rampuptime', 'rampdowntime', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
+            elif key in ('rampuptime', 'rampdowntime', 'currenthighlimit', 'currentlowlimit', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
                 hypotSettings[key] = float(value)
         except Exception as ex:
             logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
@@ -290,7 +284,7 @@ def get_settings():
         print(f"No switch2 hwid var in settings.ini: {ex}")
         updateHWIDS['switch2'] = switchHwid2
 
-    for device, hwid in updateHWIDS.items():    # Call to write hwids to settings.ini if they're missing
+    for device, hwid in updateHWIDS.items():  # Call to write hwids to settings.ini if they're missing
         default_hwid_conf(device, hwid)
 
 
@@ -392,9 +386,9 @@ def non_fault():
     nonFaultLabel = tk.Label(nonFaultWindow, text='All Parts Good', font=helv, fg=textColor, bg=nonFaultBackgroundColor)
     nonFaultLabel.place(x=100, y=50)
 
-    nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
+    nonFaultResetButton = tk.Button(nonFaultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=nonFaultWindow), bg='#000000', fg=textColor, relief='flat',
+                                    width=7, height=2, font=helvmedium)
     nonFaultResetButton.place(x=100, y=100)
-
 
 
 def reset(closeWindow, window):
@@ -411,6 +405,7 @@ def reset(closeWindow, window):
         cavityHypotSuccesses[cavity] = 0
     time.sleep(1)  # Make sure double clicks dont accidentally start it again
     startButton["state"] = "normal"  # Re-enables start button
+
 
 def create_hypot_tests():
     for hypotDriver in [hypotDriver1, hypotDriver2]:
@@ -447,6 +442,18 @@ def create_hypot_tests():
             logger.error(f"Failed to delete test, ending program")
             print(f"Failed to delete test, ending program")
             stop()
+    print(f"Hypot Test Parameters")
+    logger.info(f"Hypot Test Parameters")
+    print(f"Voltage: {hypotSettings['voltage']}, HighLimit: {hypotSettings['currenthighlimit']}, LowLimit: {hypotSettings['currentlowlimit']}, "
+          f"RampUp: {hypotSettings['rampuptime']}, Dwell: {hypotSettings['dwelltime']}, RampDown: {hypotSettings['rampdowntime']}, "
+          f"ArcSense: {hypotSettings['arcsenselevel']}, ArcDetectEnabled: {hypotSettings['arcdetection']}, Frequency: {hypotSettings['frequency']}, "
+          f"ContinuityEnabled: {hypotSettings['continuitytest']}, ContHiLimit: {hypotSettings['highlimitresistance']}, ContLoLimit: {hypotSettings['lowlimitresistance']}, "
+          f"ContOffset: {hypotSettings['resistanceoffset']}")
+    logger.info(f"Voltage: {hypotSettings['voltage']}, HighLimit: {hypotSettings['currenthighlimit']}, LowLimit: {hypotSettings['currentlowlimit']}, "
+                f"RampUp: {hypotSettings['rampuptime']}, Dwell: {hypotSettings['dwelltime']}, RampDown: {hypotSettings['rampdowntime']}, "
+                f"ArcSense: {hypotSettings['arcsenselevel']}, ArcDetectEnabled: {hypotSettings['arcdetection']}, Frequency: {hypotSettings['frequency']}, "
+                f"ContinuityEnabled: {hypotSettings['continuitytest']}, ContHiLimit: {hypotSettings['highlimitresistance']}, ContLoLimit: {hypotSettings['lowlimitresistance']}, "
+                f"ContOffset: {hypotSettings['resistanceoffset']}")
 
 
 def start():
@@ -466,7 +473,7 @@ def start():
     for cavity, value in runCavity.items():
         cavitynum = ''.join([char for char in cavity if char.isdigit()])
         cavitynum = int(cavitynum)
-        if value.get() == 1:    # If cavity Enabled
+        if value.get() == 1:  # If cavity Enabled
             print('Running Cavity: ' + str(cavitynum))
             logger.info('Running Cavity: ' + str(cavitynum))
 
@@ -481,7 +488,7 @@ def start():
 
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
-        else: # If cavity Disabled
+        else:  # If cavity Disabled
             cavityContinuitySuccesses[cavitynum] = 3
             cavityHypotSuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
@@ -512,11 +519,13 @@ def start_start():  # This is to put the main loop on a separate thread so it ca
     mainThread = Thread(target=start)
     mainThread.start()
 
+
 def close_drivers():
     hypotDriver1.close()
     hypotDriver2.close()
     switchDriver1.close()
     switchDriver2.close()
+
 
 def stop():
     logger.error('Emergency Stop Used!')
@@ -552,7 +561,7 @@ def hypot_setup(cavitynum):
         switchDriver = switchDriver1
     else:  # Second sc6540 switch and hypot
         switchDriver = switchDriver2
-        cavitynum -= 5 # Reduce value for proper switch port assignments
+        cavitynum -= 5  # Reduce value for proper switch port assignments
 
     # Enable Return (Low) channels
     rtnChannel = 2 * cavitynum - 1
@@ -625,11 +634,12 @@ def read_hypot(hypotDriver, cavityNum):
         lastOpcStatus = '1' in opcStatus
         time.sleep(0.1)
 
+
 def laser(cavityNum):
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
         if send_laser('RX,Ready\r').split(',')[1] == 'OK':
-            cavityNum -= 1 # Laser programs array starts at 0
-            send_laser('WX,ProgramNo='+str(cavityNum)+'\r')
+            cavityNum -= 1  # Laser programs array starts at 0
+            send_laser('WX,ProgramNo=' + str(cavityNum) + '\r')
             send_laser('WX,StartMarking\r')
             send_laser('RX,ProgramNo\r')
         else:
@@ -641,6 +651,7 @@ def laser(cavityNum):
 
     print('Laser Done')
     logger.info('Laser Done')
+
 
 def send_laser(msg):
     try:
@@ -664,11 +675,12 @@ def read_laser():
     except Exception as ex:
         logger.error(f'Issue receiving commands from Laser Marker: {ex}')
         print(f'Issue receiving commands from Laser Marker: {ex}')
-        return 'ng,ng,ng'   # Return no good string
+        return 'ng,ng,ng'  # Return no good string
 
 
 def admin_panel():
     get_settings()
+
     def toggle_cavity():
         for key, value in cavityCheckBoxes.items():
             value.toggle()
@@ -715,17 +727,20 @@ def admin_panel():
         closeAdminButton = tk.Button(adminWindow, text='Close', command=quit_admin, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
         closeAdminButton.grid(row=10, column=4, padx=3, pady=3)
 
-        toggleCavityButton = tk.Button(adminWindow, text='Toggle Cavity', command=toggle_cavity, bg='#000000', fg=textColor, relief='flat', width=12, height=2, font=helvmedium)
+        toggleCavityButton = tk.Button(adminWindow, text='Toggle Cavity', command=toggle_cavity, bg='#000000', fg=textColor, relief='flat', width=12, height=2,
+                                       font=helvmedium)
         toggleCavityButton.grid(row=7, column=2, padx=3, pady=3)
         toggleLaserButton = tk.Button(adminWindow, text='Toggle Laser', command=toggle_laser, bg='#000000', fg=textColor, relief='flat', width=12, height=2, font=helvmedium)
         toggleLaserButton.grid(row=7, column=5, padx=3, pady=3)
 
-        resetButton = tk.Button(adminWindow, text='Reset', command=lambda: reset(closeWindow=False, window=adminWindow), bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
+        resetButton = tk.Button(adminWindow, text='Reset', command=lambda: reset(closeWindow=False, window=adminWindow), bg='#000000', fg=textColor, relief='flat', width=7,
+                                height=2, font=helvmedium)
         resetButton.grid(row=10, column=6, padx=3, pady=3)
 
         cavityCheckBoxes = {}
         for x in range(1, 11):
-            cavityCheckBoxes[x] = Checkbutton(adminWindow, text='Cavity' + str(x), variable=runCavity['cavity' + str(x)], onvalue=1, offvalue=0, fg='white', selectcolor='Black', bg=backgroundColor, font=helvmedium)
+            cavityCheckBoxes[x] = Checkbutton(adminWindow, text='Cavity' + str(x), variable=runCavity['cavity' + str(x)], onvalue=1, offvalue=0, fg='white',
+                                              selectcolor='Black', bg=backgroundColor, font=helvmedium)
             if x < 6:
                 cavityCheckBoxes[x].grid(row=x, column=1)
             else:
@@ -822,10 +837,11 @@ def admin_panel():
         hypotTkinterObjs['resistanceoffset'].set(hypotSettings['resistanceoffset'])
         hypotTkinterObjs['resistanceoffset'].grid(row=11, column=13, padx=20)
 
-        hardwareSettingsButton = tk.Button(adminWindow, text='Hardware\nSettings', command=hardware_settings, bg='#000000', fg=textColor, relief='flat', width=11, height=3, font=helvsmall)
+        hardwareSettingsButton = tk.Button(adminWindow, text='Hardware\nSettings', command=hardware_settings, bg='#000000', fg=textColor, relief='flat', width=11, height=3,
+                                           font=helvsmall)
         hardwareSettingsButton.grid(row=12, column=4)
 
-    else: # Wrong password
+    else:  # Wrong password
         wrongPassLabel = tk.Label(root, text="Wrong Password!")
         wrongPassLabel.place(x=1550, y=925)
         root.after(3000, lambda: wrongPassLabel.destroy())  # time in ms
@@ -844,6 +860,7 @@ def hardware_settings():
     else:  # no exception and no window? creating window.
         if not hardwareWindow.winfo_exists():
             hardwareWindow = tk.Toplevel(root)
+
     def quit_hardware():
         hardwareWindow.destroy()
 
@@ -867,11 +884,13 @@ def hardware_settings():
     switch2Var = tk.StringVar()
     switch2Dropdown = ttk.Combobox(hardwareWindow, textvariable=switch2Var, values=list(usbHwids))
     switch2Dropdown.pack(pady=10)
+
     def set_default_hwid():
         hypot1Dropdown.set(hypotHwid1)
         hypot2Dropdown.set(hypotHwid2)
         switch1Dropdown.set(switchHwid1)
         switch2Dropdown.set(switchHwid2)
+
     hardwareWindow.update()
     switch2Dropdown.update_idletasks()
     switch1Dropdown.update()
@@ -882,6 +901,7 @@ def hardware_settings():
 
     quitHardwareButton = tk.Button(hardwareWindow, text='Close', command=quit_hardware, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
     quitHardwareButton.pack(pady=10)
+
 
 # Function to create a grid of rectangles and store references
 def create_rectangle_grid(rows, columns, rectWidth, rectHeight, padding, canv):
@@ -930,6 +950,7 @@ def update_rectangle_text(cavNum, text):
     else:
         print(f"No rectangle found at position {cavNum}")
 
+
 def update_error_text():
     if not errors:
         errorString = 'All Hardware Connected'
@@ -937,6 +958,7 @@ def update_error_text():
     else:
         errorString = '\n'.join(errors)
         errorText.config(text=errorString, fg='red')
+
 
 # Setting values to make sure theyre populated when referenced, or if no settings file found initially
 for y in range(1, 11):
@@ -986,7 +1008,6 @@ errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helvme
 errorText.place(x=0, y=0)
 update_error_text()
 
-
 # Create the grid of rectangles
 create_rectangle_grid(rows=5, columns=2, rectWidth=300, rectHeight=100, padding=50, canv=canvas)
 
@@ -1000,12 +1021,12 @@ adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000
 adminSubmitButton.place(x=1550, y=925)
 
 # Populate settings.ini file. Need to start admin_panel to populate fields to save
-adminTextbox.delete(0, 'end') # Clears Password
-adminTextbox.insert(0, adminPassword) # Set Password
+adminTextbox.delete(0, 'end')  # Clears Password
+adminTextbox.insert(0, adminPassword)  # Set Password
 admin_panel()
 save_settings()
 update_colors(canvas)
-for widget in root.winfo_children(): # Close admin window
+for widget in root.winfo_children():  # Close admin window
     if isinstance(widget, tk.Toplevel):
         widget.destroy()
 adminTextbox.delete(0, 'end')  # Clears Password
@@ -1013,7 +1034,7 @@ root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
 #switchDriver2.Execution.DisableAllChannels()
-#hypot_setup(10)
+#hypot_setup(7)
 
 
 try:
