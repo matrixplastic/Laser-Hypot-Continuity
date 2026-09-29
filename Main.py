@@ -86,12 +86,12 @@ usbHwids = set()
 defaultHypotSettings = {
     'voltage': 1000,  # AC Voltage
     'currenthighlimit': 10,  # Current High Limit
-    'currentlowlimit': 0,  # Current Low Limit
-    'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 0.3,  # RampDownTime in seconds
-    'rampdowntime': 0.0,  # Dewll time in seconds
+    'currentlowlimit': 0.001,  # Current Low Limit
+    'rampuptime': 1,  # Ramp up time in seconds
+    'dwelltime': 5,  # RampDownTime in seconds
+    'rampdowntime': 1,  # Dewll time in seconds
     'arcsenselevel': 1,  # ArcSense level
-    'arcdetection': True,  # Arc detection
+    'arcdetection': False,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
     'continuitytest': True,  # Continuity test
     'highlimitresistance': 1.5,  # High limit of the continuity resistance
@@ -310,6 +310,7 @@ def save_settings():
         for key, value in hypotTkinterObjs.items():
             config['Hypot'][key] = str(value.get())
         config['Hypot']['arcdetection'] = str(hypotArcDetectionBool.get())
+        config['Hypot']['continuitytest'] = "True"
         config.write(configfile)  # Close and save to settings file
     update_colors(canvas)
 
