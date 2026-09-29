@@ -31,11 +31,21 @@ This project is designed to run a 10-cavity fixture through a variety of tests a
 ## Usage
 
 - Double click .exe to start the program
-- Left side START button starts the tests
-- Emergency STOP button disables as much as possible, and force closes the program
-- Right half shows progress bar of tests, as well as current settings on each cavity below it
-- Admin panel to modify those settings to enable/disable the tests or lasering on each cavity
-- Password default is 6789, can be changed in settings.ini
+- Left column: the Devices box shows each tester, switch, the laser marker and the machine-data
+  link with a green or red dot; Messages shows why a run did not start; START and Emergency STOP
+- Change devices... opens a panel that lists the USB serial devices attached right now. Pick one
+  for a role and press Connect: the driver is swapped in place, no restart, and the serial number
+  is saved to settings.ini. The laser marker's IP can be changed and reconnected the same way.
+  Not available while a test is running
+- Middle: progress bar and the state of each cavity
+- Right column: the test settings the next run will use, read only. A value in amber differs from
+  the program's default, which means settings.ini has drifted from the code
+- Admin settings (password default 6789, changeable in settings.ini) enable or disable the tests
+  or lasering per cavity and edit the test parameters; saving them updates the read-only view and
+  the next run at once
+- Emergency STOP disables as much as possible and force closes the program
+- tests/ui_smoke.py runs the whole window without hardware (`xvfb-run python tests/ui_smoke.py`,
+  scenarios connected, missing, fail) and writes screenshots; use it before a build
 
 ## Technical
 

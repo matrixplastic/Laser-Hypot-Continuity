@@ -17,7 +17,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 from machinedata import MachineData
 
-VERSION = '2026.09.29'
+VERSION = '2026.09.30'
 
 
 # Setup Logging
@@ -76,7 +76,7 @@ switchHwid2 = "B0007BEKA"
 
 
 # Setup Laser Connectivity
-laserIP = '192.180.0.11'
+laserIP = '192.180.0.11'  # default; settings.ini [Laser] ip overrides
 laserSocket = None
 laserConnected = False
 
@@ -97,9 +97,6 @@ def connect_laser():
         if 'Connection to Laser Marker failed' not in errors:
             errors.append('Connection to Laser Marker failed')
     return laserConnected
-
-
-connect_laser()
 
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
@@ -141,6 +138,15 @@ HYPOT_PARAMS = (
     ('lowlimitresistance', 'ContLoLimit'), ('resistanceoffset', 'ContOffset'),
 )
 
+SETTING_LABELS = {
+    'voltage': 'Voltage (V)', 'currenthighlimit': 'Current high limit (mA)', 'currentlowlimit': 'Current low limit (mA)',
+    'rampuptime': 'Ramp up (s)', 'dwelltime': 'Dwell (s)', 'rampdowntime': 'Ramp down (s)', 'arcsenselevel': 'Arc sense',
+    'arcdetection': 'Arc detection', 'frequency': 'Frequency', 'continuitytest': 'Continuity test',
+    'highlimitresistance': 'Continuity high limit (\u03a9)', 'lowlimitresistance': 'Continuity low limit (\u03a9)', 'resistanceoffset': 'Resistance offset (\u03a9)',
+}
+settingsPanelRows = {}   # setting key -> value label on the main window
+devicePanelRows = {}     # role -> (dot canvas, oval id, detail label) on the main window
+
 # Admin Panel Settings Variables
 hypotTkinterObjs = {}
 hypotTkinterObjsLabel = {}
@@ -150,9 +156,26 @@ hypotArcDetectionBool = None
 rectangles = {}
 statusText = {}
 root = tk.Tk()
-root.geometry('1800x900')
-root.title('Main')
-root.state('zoomed')
+root.geometry('1800x1000')
+root.title('Laser Hipot Continuity')
+
+
+def toolwindow(window):
+    """Hide the minimise, maximise and close buttons on a popup (Windows only; ignored elsewhere)."""
+    try:
+        window.attributes('-toolwindow', True)
+    except tk.TclError:
+        pass
+
+
+def maximize():
+    try:
+        root.state('zoomed')  # Windows
+    except tk.TclError:
+        root.geometry('1800x1000')
+
+
+maximize()
 backgroundColor = '#2A2E32'
 canvasColor = '#3D434B'
 enabledColor = '#26A671'
@@ -162,7 +185,7 @@ textBackgroundColor = '#2A2E32'
 textColor = 'White'
 
 root.configure(bg=backgroundColor)
-# root.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
+# toolwindow(root)
 
 
 def get_usb_hwids():
@@ -199,62 +222,81 @@ def concat_port(comPort):
         return None
 
 
-# Avoid using COM# because windows can mix it up
-
-hypotComPort1 = find_com_port_by_hwid_number(hypotHwid1)
-portNumHy1 = concat_port(hypotComPort1)
-
-hypotComPort2 = find_com_port_by_hwid_number(hypotHwid2)
-portNumHy2 = concat_port(hypotComPort2)
-
-switchComPort1 = find_com_port_by_hwid_number(switchHwid1)
-portNumSC1 = concat_port(switchComPort1)
-
-switchComPort2 = find_com_port_by_hwid_number(switchHwid2)
-portNumSC2 = concat_port(switchComPort2)
+# Devices are found by USB serial number, never by COM number, because Windows renumbers ports.
+DEVICE_ROLES = {'hypot1': 'Hypot 1', 'hypot2': 'Hypot 2', 'switch1': 'Switch 1', 'switch2': 'Switch 2'}
+SWITCH_OPTIONS = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
+drivers = {role: None for role in DEVICE_ROLES}
+deviceStatus = {role: {'ok': False, 'detail': 'not connected', 'hwid': ''} for role in DEVICE_ROLES}
+hypotDriver1 = hypotDriver2 = switchDriver1 = switchDriver2 = None
 
 
-# Driver Setup
-try:
-    hypotDriver1 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
-    hypotDriver1.Initialize(portNumHy1, True, False, 'DriverSetup=BaudRate=38400, QueryInstrStatus=true')
-    print(f"Hypot1 Port: {portNumHy1}")
-    logger.info(f"Hypot1 Port: {portNumHy1}")
-except Exception as e:
-    print(f'Connection to Hypot1 failed: {e}')
-    logger.error(f'Connection to Hypot1 failed: {e}')
-    errors.append('Connection to Hypot1 failed')
+def role_hwid(role):
+    return {'hypot1': hypotHwid1, 'hypot2': hypotHwid2, 'switch1': switchHwid1, 'switch2': switchHwid2}[role]
 
-try:
-    hypotDriver2 = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
-    hypotDriver2.Initialize(portNumHy2, True, False, 'DriverSetup=BaudRate=38400, QueryInstrStatus=true')
-    print(f"Hypot2 Port: {portNumHy2}")
-    logger.info(f"Hypot2 Port: {portNumHy2}")
-except Exception as e:
-    print(f'Connection to Hypot2 failed: {e}')
-    logger.error(f'Connection to Hypot2 failed: {e}')
-    errors.append('Connection to Hypot2 failed')
 
-try:
-    switchDriver1 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
-    switchOptionString1 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
-    switchDriver1.Initialize(portNumSC1, True, False, switchOptionString1)
-    print(f"Switch1 Port: {portNumSC1}")
-    logger.info(f"Switch1 Port: {portNumSC1}")
-except Exception as e:
-    print(f'Connection to SC6540 Switch1 failed: {e}')
-    logger.error(f'Connection to SC6540 Switch1 failed: {e}')
-    errors.append('Connection to SC6540 Switch1 failed')
-try:
-    switchDriver2 = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
-    switchOptionString2 = 'Cache=false, InterchangeCheck=false, QueryInstrStatus=true, RangeCheck=false, RecordCoercions=false, Simulate=false'
-    switchDriver2.Initialize(portNumSC2, True, False, switchOptionString2)
-    print(f"Switch2 Port: {portNumSC2}")
-    logger.info(f"Switch2 Port: {portNumSC2}")
-except Exception as e:
-    print(f'Connection to SC6540 Switch2 failed: {e}')
-    logger.error(f'Connection to SC6540 Switch2 failed: {e}')
-    errors.append('Connection to SC6540 Switch2 failed')
+def set_role_hwid(role, hwid):
+    global hypotHwid1, hypotHwid2, switchHwid1, switchHwid2
+    if role == 'hypot1':
+        hypotHwid1 = hwid
+    elif role == 'hypot2':
+        hypotHwid2 = hwid
+    elif role == 'switch1':
+        switchHwid1 = hwid
+    else:
+        switchHwid2 = hwid
+
+
+def connect_device(role, hwid=None):
+    """(Re)connects one tester or switch by its USB serial, closing the old driver first. Safe to
+    call while idle, from the device panel, without restarting the program. Returns True on success."""
+    global hypotDriver1, hypotDriver2, switchDriver1, switchDriver2
+    name = DEVICE_ROLES[role]
+    if hwid:
+        set_role_hwid(role, hwid)
+    hwid = role_hwid(role)
+    old = drivers.get(role)
+    if old is not None:
+        try:
+            old.close()
+        except Exception as ex:
+            logger.warning(f'{name}: closing the old driver failed: {ex}')
+    drivers[role] = None
+    port = concat_port(find_com_port_by_hwid_number(hwid)) if hwid else None
+    try:
+        if port is None:
+            raise RuntimeError(f'no USB device with serial {hwid or "(none)"} attached')
+        if role.startswith('hypot'):
+            driver = cc.CreateObject('ARI38XX.ARI38XX', interface=ARI38XXLib.IARI38XX)
+            driver.Initialize(port, True, False, 'DriverSetup=BaudRate=38400, QueryInstrStatus=true')
+        else:
+            driver = cc.CreateObject('SC6540.SC6540', interface=SC6540Lib.ISC6540)
+            driver.Initialize(port, True, False, SWITCH_OPTIONS)
+        drivers[role] = driver
+        deviceStatus[role] = {'ok': True, 'detail': f'{port}, serial {hwid}', 'hwid': hwid}
+        logger.info(f'{name} connected on {port} (serial {hwid})')
+        print(f'{name} connected on {port} (serial {hwid})')
+        if f'Connection to {name} failed' in errors:
+            errors.remove(f'Connection to {name} failed')
+    except Exception as ex:
+        deviceStatus[role] = {'ok': False, 'detail': str(ex)[:90], 'hwid': hwid or ''}
+        logger.error(f'Connection to {name} failed: {ex}')
+        print(f'Connection to {name} failed: {ex}')
+        if f'Connection to {name} failed' not in errors:
+            errors.append(f'Connection to {name} failed')
+    hypotDriver1, hypotDriver2, switchDriver1, switchDriver2 = drivers['hypot1'], drivers['hypot2'], drivers['switch1'], drivers['switch2']
+    refresh_device_panel()
+    return deviceStatus[role]['ok']
+
+
+def disable_all_channels():
+    for role in ('switch1', 'switch2'):
+        if drivers[role] is not None:
+            drivers[role].Execution.DisableAllChannels()
+
+
+def write_settings():
+    with open(SETTINGS_PATH, 'w') as configfile:
+        config.write(configfile)
 
 
 def get_settings():
@@ -332,11 +374,18 @@ def get_settings():
     for device, hwid in updateHWIDS.items():    # Call to write hwids to settings.ini if they're missing
         default_hwid_conf(device, hwid)
 
+    global laserIP
+    if 'Laser' not in config:
+        config['Laser'] = {}
+    if not config['Laser'].get('ip'):
+        config['Laser']['ip'] = laserIP
+    laserIP = config['Laser']['ip'].strip()
+    refresh_settings_panel()
+
 
 def default_hwid_conf(device, hwid):
-    with open(SETTINGS_PATH, 'w') as configfile:
-        config['Hardware IDs'][device] = hwid
-        config.write(configfile)
+    config['Hardware IDs'][device] = hwid
+    write_settings()
 
 
 def save_settings():
@@ -356,48 +405,156 @@ def save_settings():
             config['Hypot'][key] = str(value.get())
         config['Hypot']['arcdetection'] = str(hypotArcDetectionBool.get())
         config.write(configfile)  # Close and save to settings file
+    get_settings()  # reload so the next run and the settings view use what was just saved
     update_colors(canvas)
 
 
-def save_hwids():
-    if hypotHwid1 != config['Hardware IDs']['hypot1']:
-        try:
-            config['Hardware IDs']['hypot1'] = hypotHwid1
-        except Exception as ex:
-            logger.error(f"Error Connecting to or Saving Hypot 1 to settings file! {ex}")
-    if hypotHwid2 != config['Hardware IDs']['hypot2']:
-        try:
-            config['Hardware IDs']['hypot2'] = hypotHwid2
-        except Exception as ex:
-            logger.error(f"Error Connecting to or Saving Hypot 2 to settings file! {ex}")
-    if switchHwid1 != config['Hardware IDs']['switch1']:
-        try:
-            config['Hardware IDs']['switch1'] = switchHwid1
-        except Exception as ex:
-            logger.error(f"Error Connecting to or Saving Switch 1 to settings file! {ex}")
-    if switchHwid2 != config['Hardware IDs']['switch2']:
-        try:
-            config['Hardware IDs']['switch2'] = switchHwid2
-        except Exception as ex:
-            logger.error(f"Error Connecting to or Saving Switch 2 to settings file! {ex}")
+def attached_ports():
+    """Serial devices attached right now as (label, serial); a fresh list on every call."""
+    out = []
+    for port in serial.tools.list_ports.comports():
+        ser = port.hwid.split('SER=')[1].split(' ')[0] if 'SER=' in port.hwid else ''
+        out.append((f'{port.device}   {port.description}   serial {ser or "?"}', ser))
+    return out
+
+
+def device_settings():
+    """Change which tester or switch fills each role while the program runs. Connect swaps the
+    driver in place and saves the serial to settings.ini; no restart and no file editing."""
+    global deviceWindow
+    try:
+        if deviceWindow.winfo_exists():
+            deviceWindow.focus_force()
+            return
+    except (NameError, tk.TclError):
+        pass
+    deviceWindow = tk.Toplevel(root)
+    deviceWindow.title('Devices')
+    deviceWindow.attributes('-topmost', True)
+    deviceWindow.configure(bg=backgroundColor, padx=14, pady=10)
+    tk.Label(deviceWindow, text='Devices', font=helv, fg=textColor, bg=backgroundColor).grid(row=0, column=0, columnspan=4, sticky='w', pady=(0, 2))
+    tk.Label(deviceWindow, text='Pick the attached device for each role and press Connect. The serial number is saved to settings.ini so it survives a restart. Not available while a test is running.',
+             font=helvsmall, fg='#B0B8C0', bg=backgroundColor, wraplength=900, justify='left').grid(row=1, column=0, columnspan=4, sticky='w', pady=(0, 8))
+    combos, status = {}, {}
+
+    def paint(role):
+        st = deviceStatus[role]
+        status[role].config(text=('Connected: ' if st['ok'] else 'Not connected: ') + st['detail'], fg=enabledColor if st['ok'] else halfDisabledColor)
+
+    def refresh_lists():
+        ports = attached_ports()
+        for role, combo in combos.items():
+            combo['values'] = [p[0] for p in ports]
+            current = next((p[0] for p in ports if p[1] and p[1] == role_hwid(role)), '')
+            combo.set(current or (f'(serial {role_hwid(role)} is not attached)' if role_hwid(role) else '(none)'))
+            paint(role)
+
+    def connect(role):
+        if startButton['state'] == 'disabled':
+            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
+            return
+        chosen = combos[role].get()
+        serialNo = next((p[1] for p in attached_ports() if p[0] == chosen), None)
+        if not serialNo:
+            messagebox.showwarning('Devices', 'Pick an attached device from the list first.', parent=deviceWindow)
+            return
+        if connect_device(role, serialNo):
+            config['Hardware IDs'][role] = serialNo
+            write_settings()
+        paint(role)
+        update_error_text()
+
+    row = 2
+    for role, name in DEVICE_ROLES.items():
+        tk.Label(deviceWindow, text=name, font=helvmedium, fg=textColor, bg=backgroundColor).grid(row=row, column=0, sticky='w', pady=5, padx=(0, 10))
+        combos[role] = ttk.Combobox(deviceWindow, width=54, state='readonly')
+        combos[role].grid(row=row, column=1, padx=(0, 8))
+        tk.Button(deviceWindow, text='Connect', command=lambda r=role: connect(r), bg='#000000', fg=textColor, relief='flat', width=9, font=helvsmall).grid(row=row, column=2, padx=(0, 10))
+        status[role] = tk.Label(deviceWindow, text='', font=helvsmall, fg=textColor, bg=backgroundColor, anchor='w', width=52)
+        status[role].grid(row=row, column=3, sticky='w')
+        row += 1
+
+    tk.Label(deviceWindow, text='Laser marker', font=helvmedium, fg=textColor, bg=backgroundColor).grid(row=row, column=0, sticky='w', pady=5, padx=(0, 10))
+    ipVar = tk.StringVar(value=laserIP)
+    ttk.Entry(deviceWindow, textvariable=ipVar, width=24).grid(row=row, column=1, sticky='w')
+    laserStatus = tk.Label(deviceWindow, text='', font=helvsmall, fg=textColor, bg=backgroundColor, anchor='w', width=52)
+    laserStatus.grid(row=row, column=3, sticky='w')
+
+    def paint_laser():
+        laserStatus.config(text=f'Connected: {laserIP}:50000' if laserConnected else f'Not connected: {laserIP} did not answer', fg=enabledColor if laserConnected else halfDisabledColor)
+
+    def reconnect_laser():
+        global laserIP
+        if startButton['state'] == 'disabled':
+            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
+            return
+        laserIP = ipVar.get().strip() or laserIP
+        config['Laser']['ip'] = laserIP
+        write_settings()
+        connect_laser()
+        paint_laser()
+        refresh_device_panel()
+        update_error_text()
+
+    tk.Button(deviceWindow, text='Reconnect', command=reconnect_laser, bg='#000000', fg=textColor, relief='flat', width=9, font=helvsmall).grid(row=row, column=2, padx=(0, 10))
+    row += 1
+    tk.Button(deviceWindow, text='Rescan ports', command=refresh_lists, bg='#000000', fg=textColor, relief='flat', width=12, font=helvsmall).grid(row=row, column=1, sticky='w', pady=(12, 4))
+    tk.Button(deviceWindow, text='Close', command=deviceWindow.destroy, bg='#000000', fg=textColor, relief='flat', width=9, font=helvsmall).grid(row=row, column=2, pady=(12, 4))
+    refresh_lists()
+    paint_laser()
+
+
+def refresh_device_panel():
+    """Status dots on the main window: testers, switches, laser and the machine-data link."""
+    if not devicePanelRows:
+        return
+    for role, (dot, oval, detail) in devicePanelRows.items():
+        if role == 'laser':
+            ok, text = laserConnected, (f'{laserIP}:50000' if laserConnected else f'{laserIP} did not answer')
+        elif role == 'machinedata':
+            md = globals().get('machineData')
+            ok = md is not None and md.client is not None
+            text = f'{md.host} as machine {md.mid}' if ok else ('off in settings.ini' if md is None or not md.enabled else 'not connected')
+        else:
+            ok, text = deviceStatus[role]['ok'], deviceStatus[role]['detail']
+        dot.itemconfig(oval, fill=enabledColor if ok else ('#777' if role == 'machinedata' else disabledColor))
+        detail.config(text=text)
+
+
+def refresh_settings_panel():
+    """Read-only view of the values the next run will use, amber where they differ from the
+    program defaults (a settings.ini that has drifted from the code)."""
+    if not settingsPanelRows:
+        return
+    drift = 0
+    for key, _ in HYPOT_PARAMS:
+        value = hypotSettings.get(key, '')
+        text = ('Yes' if value else 'No') if isinstance(defaultHypotSettings[key], bool) else str(value)
+        same = values_match(value, defaultHypotSettings[key])
+        drift += 0 if same else 1
+        settingsPanelRows[key].config(text=text, fg=textColor if same else halfDisabledColor)
+    settingsNote.config(text='These must match the LHC work instruction. Change them in Admin Settings; every run logs them and reads them back from both testers before the first cavity.'
+                        + (f' {drift} value{"s" if drift > 1 else ""} differ from the program defaults.' if drift else ''))
 
 
 def fault():
     faultWindow = tk.Toplevel(root)
-    faultWindow.geometry('1000x500')
+    faultWindow.geometry('1300x520')
     faultWindow.title('Part Fault')
-    faultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
+    for col in (0, 3, 6):  # three result columns share the width
+        faultWindow.columnconfigure(col, weight=1, minsize=280)
+    toolwindow(faultWindow)
     faultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
     faultBackgroundColor = '#DE3C4B'
     faultWindow.configure(bg=faultBackgroundColor)
     faultWindow.lift()
 
     faultLabel = tk.Label(faultWindow, text='Cavity failed a test', font=helv, fg=textColor, bg=faultBackgroundColor)
-    faultLabel.grid(row=0, column=2, pady=5)
+    faultLabel.grid(row=0, column=0, columnspan=8, pady=8)
 
     faultResetButton = tk.Button(faultWindow, text='Reset', command=lambda: reset(closeWindow=True, window=faultWindow), bg='#000000', fg=textColor, relief='flat', width=7,
                                  height=2, font=helvmedium)
-    faultResetButton.grid(row=13, column=2, padx=3, pady=3)
+    faultResetButton.grid(row=13, column=0, columnspan=8, padx=3, pady=12)
 
     continuityFaultList = {}
     continuityFaultHeader = tk.Label(faultWindow, text='Continuity Failures', font=helvUnderline, fg=textColor, bg=faultBackgroundColor)
@@ -431,7 +588,7 @@ def non_fault():
     nonFaultWindow = tk.Toplevel(root)
     nonFaultWindow.geometry('700x350')
     nonFaultWindow.title('Test Complete')
-    nonFaultWindow.attributes('-toolwindow', True)  # Disables bar at the top right: min, max, close button
+    toolwindow(nonFaultWindow)
     nonFaultWindow.attributes('-topmost', True)  # Force it to be above all other program windows
     nonFaultBackgroundColor = '#769C1C'
     nonFaultWindow.configure(bg=nonFaultBackgroundColor)
@@ -450,8 +607,7 @@ def reset(closeWindow, window):
     faultState = False
     if closeWindow:
         window.destroy()
-    switchDriver1.Execution.DisableAllChannels()
-    switchDriver2.Execution.DisableAllChannels()
+    disable_all_channels()
     # Set all Output Variables to 0
     for cavity in cavityContinuitySuccesses:
         cavityContinuitySuccesses[cavity] = 0
@@ -524,6 +680,11 @@ def preflight():
     if not settingsValid:
         errors.append('settings.ini has a bad value. Fix it and restart the program.')
         return False
+    missing = [DEVICE_ROLES[r] for r in DEVICE_ROLES if drivers[r] is None]
+    if missing:
+        errors.append('Not connected: ' + ', '.join(missing) + '. Use Change devices.')
+        machineData.alarm('DEVICES', 'not connected: ' + ', '.join(missing))
+        return False
     laserWanted = any(runCavity[c].get() == 1 and laserEnabled[c].get() == 1 for c in runCavity)
     if laserWanted and not laserConnected and not connect_laser():
         errors.append('Laser marker not connected. Reconnect it, or disable the laser for this run.')
@@ -576,14 +737,12 @@ def start():
             print('Running Cavity: ' + str(cavitynum))
             logger.info('Running Cavity: ' + str(cavitynum))
 
-            switchDriver1.Execution.DisableAllChannels()
-            switchDriver2.Execution.DisableAllChannels()
+            disable_all_channels()
 
             hypot_setup(cavitynum)
             hypot_execution(cavityNum=cavitynum)
 
-            switchDriver1.Execution.DisableAllChannels()
-            switchDriver2.Execution.DisableAllChannels()
+            disable_all_channels()
 
             totalProgressBar.step(10)
             totalProgressPercentage.configure(text=str(int(totalProgressBar['value'])) + ' %')  # Updates displayed percentage. Conv to int to remove decimals
@@ -626,18 +785,20 @@ def start_start():  # This is to put the main loop on a separate thread so it ca
     mainThread.start()
 
 def close_drivers():
-    hypotDriver1.close()
-    hypotDriver2.close()
-    switchDriver1.close()
-    switchDriver2.close()
+    for role, driver in drivers.items():
+        if driver is None:
+            continue
+        try:
+            driver.close()
+        except Exception as ex:
+            logger.warning(f'{DEVICE_ROLES[role]}: close failed: {ex}')
 
 def stop():
     logger.error('Emergency Stop Used!')
     print('Emergency Stop Used!')
     machineData.close()
     try:
-        switchDriver1.Execution.DisableAllChannels()
-        switchDriver2.Execution.DisableAllChannels()
+        disable_all_channels()
         close_drivers()
         print('Program exited cleanly')
         # noinspection PyProtectedMember
@@ -833,7 +994,7 @@ def admin_panel():
 
         adminWindow.geometry('1600x800')
         adminWindow.title('Admin Panel')
-        adminWindow.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
+        toolwindow(adminWindow)
         adminWindow.attributes('-topmost', True)  # Force it to be above all other program windows
         adminWindow.configure(bg=backgroundColor)
         adminWindow.lift()
@@ -956,66 +1117,13 @@ def admin_panel():
         hypotTkinterObjs['resistanceoffset'].set(hypotSettings['resistanceoffset'])
         hypotTkinterObjs['resistanceoffset'].grid(row=11, column=13, padx=20)
 
-        hardwareSettingsButton = tk.Button(adminWindow, text='Hardware\nSettings', command=hardware_settings, bg='#000000', fg=textColor, relief='flat', width=11, height=3, font=helvsmall)
+        hardwareSettingsButton = tk.Button(adminWindow, text='Change\ndevices', command=device_settings, bg='#000000', fg=textColor, relief='flat', width=11, height=3, font=helvsmall)
         hardwareSettingsButton.grid(row=12, column=4)
 
     else: # Wrong password
-        wrongPassLabel = tk.Label(root, text="Wrong Password!")
-        wrongPassLabel.place(x=1550, y=925)
-        root.after(3000, lambda: wrongPassLabel.destroy())  # time in ms
+        adminMessage.config(text='Wrong password')
+        root.after(3000, lambda: adminMessage.config(text=''))  # time in ms
 
-
-def hardware_settings():
-    try:  # Prevent duplicate windows being opened
-        # noinspection PyUnboundLocalVariable
-        if hardwareWindow.winfo_exists():  # python will raise an exception there if variable doesn't exist
-            hardwareWindow.after(1, lambda: hardwareWindow.focus_force())  # Refocuses window instead of creating a duplicate
-            pass
-        else:
-            hardwareWindow = tk.Toplevel(root)
-    except (NameError, tk.TclError):  # exception? we are now here.
-        hardwareWindow = tk.Toplevel(root)
-    else:  # no exception and no window? creating window.
-        if not hardwareWindow.winfo_exists():
-            hardwareWindow = tk.Toplevel(root)
-    def quit_hardware():
-        hardwareWindow.destroy()
-
-    hardwareWindow.geometry('800x400')
-    hardwareWindow.title('Hardware Panel')
-    hardwareWindow.attributes('-toolwindow', True)  # Disables bar at min, max, close button in top right
-    hardwareWindow.attributes('-topmost', True)  # Force it to be above all other program windows
-    hardwareWindow.configure(bg=backgroundColor)
-    hardwareWindow.lift()
-
-    get_usb_hwids()
-    hypot1Var = tk.StringVar()
-    hypot1Dropdown = ttk.Combobox(hardwareWindow, textvariable=hypot1Var, values=list(usbHwids))
-    hypot1Dropdown.pack(pady=10)
-    hypot2Var = tk.StringVar()
-    hypot2Dropdown = ttk.Combobox(hardwareWindow, textvariable=hypot2Var, values=list(usbHwids))
-    hypot2Dropdown.pack(pady=10)
-    switch1Var = tk.StringVar()
-    switch1Dropdown = ttk.Combobox(hardwareWindow, textvariable=switch1Var, values=list(usbHwids))
-    switch1Dropdown.pack(pady=10)
-    switch2Var = tk.StringVar()
-    switch2Dropdown = ttk.Combobox(hardwareWindow, textvariable=switch2Var, values=list(usbHwids))
-    switch2Dropdown.pack(pady=10)
-    def set_default_hwid():
-        hypot1Dropdown.set(hypotHwid1)
-        hypot2Dropdown.set(hypotHwid2)
-        switch1Dropdown.set(switchHwid1)
-        switch2Dropdown.set(switchHwid2)
-    hardwareWindow.update()
-    switch2Dropdown.update_idletasks()
-    switch1Dropdown.update()
-    hardwareWindow.after(100, set_default_hwid())  # Pause for a bit otherwise default values are unset
-
-    save_hwidButton = tk.Button(hardwareWindow, text='Save', command=save_hwids, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
-    save_hwidButton.pack(pady=10)
-
-    quitHardwareButton = tk.Button(hardwareWindow, text='Close', command=quit_hardware, bg='#000000', fg=textColor, relief='flat', width=7, height=2, font=helvmedium)
-    quitHardwareButton.pack(pady=10)
 
 # Function to create a grid of rectangles and store references
 def create_rectangle_grid(rows, columns, rectWidth, rectHeight, padding, canv):
@@ -1066,11 +1174,9 @@ def update_rectangle_text(cavNum, text):
 
 def update_error_text():
     if not errors:
-        errorString = 'All Hardware Connected'
-        errorText.config(text=errorString, fg='green')
+        errorText.config(text='Ready. All devices connected.', fg=enabledColor)
     else:
-        errorString = '\n'.join(errors)
-        errorText.config(text=errorString, fg='red')
+        errorText.config(text='\n'.join(errors[-6:]), fg='#FF6B6B')
 
 # Setting values to make sure theyre populated when referenced, or if no settings file found initially
 for y in range(1, 11):
@@ -1082,6 +1188,9 @@ for y in range(1, 11):
 get_settings()
 machineData = MachineData(config['MachineData'], logger, VERSION)
 machineData.start()
+for _role in DEVICE_ROLES:
+    connect_device(_role)
+connect_laser()
 
 #       Starting UI Setup
 # Fonts and Styles
@@ -1090,36 +1199,39 @@ helvUnderline = tkfont.Font(family='Helvetica', size=20, weight='bold', underlin
 helvmedium = tkfont.Font(family='Helvetica', size=15, weight='bold')
 helvsmall = tkfont.Font(family='Helvetica', size=10, weight='bold')
 
-# UI Setup
-startButton = tk.Button(root, text='START', command=start_start, bg='#000000', fg=textColor, relief='flat', width=20, height=12, font=helv)
-startButton.place(x=50, y=400)
-stopButton = tk.Button(root, text='Emergency STOP', command=on_stop_button_clicked, bg='#000000', fg=textColor, relief='flat', width=18, height=3, font=helvmedium)
-stopButton.place(x=850, y=875)
-root.protocol("WM_DELETE_WINDOW", on_stop_button_clicked)  # Gracefully shuts down program if window closed
-root.state('zoomed')
+# UI Setup. Three columns: devices and controls, progress and cavities, settings and admin.
+root.columnconfigure(1, weight=1)
+root.rowconfigure(1, weight=1)
+header = tk.Frame(root, bg=canvasColor, padx=16, pady=8)
+header.grid(row=0, column=0, columnspan=3, sticky='ew')
+tk.Label(header, text='Laser Hipot Continuity', font=helv, fg=textColor, bg=canvasColor).pack(side=LEFT)
+tk.Label(header, text=f'v{VERSION}    settings.ini: {SETTINGS_PATH}', font=helvsmall, fg='#B0B8C0', bg=canvasColor).pack(side=RIGHT)
 
-progressCanvas = Canvas(root, width=400, height=300, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
-progressCanvas.place(x=1000, y=10)
-progressCanvas.create_rectangle(0, 0, 0, 0, fill='white')
+left = tk.Frame(root, bg=backgroundColor, padx=16, pady=12)
+left.grid(row=1, column=0, sticky='nsw')
+center = tk.Frame(root, bg=backgroundColor, padx=8, pady=12)
+center.grid(row=1, column=1, sticky='n')
+right = tk.Frame(root, bg=backgroundColor, padx=16, pady=12)
+right.grid(row=1, column=2, sticky='nse')
 
-totalProgressText = tk.Label(progressCanvas, text='Total Progress', fg=textColor, bg=canvasColor, font=helv)
-totalProgressText.pack(side=TOP)
-totalProgressBar = ttk.Progressbar(progressCanvas, length=360, maximum=100)
-totalProgressBar.pack(side=TOP)
-totalProgressPercentage = tk.Label(progressCanvas, text='0%', fg='Black', bg='#E6E6E6', font=helvmedium)
-totalProgressPercentage.place(in_=totalProgressBar, relx=0.5, rely=0.5, anchor=tk.CENTER)
+# Devices
+deviceFrame = tk.LabelFrame(left, text=' Devices ', font=helvmedium, fg=textColor, bg=canvasColor, padx=12, pady=8, bd=0)
+deviceFrame.pack(fill=X)
+for _i, (_role, _name) in enumerate(list(DEVICE_ROLES.items()) + [('laser', 'Laser marker'), ('machinedata', 'Machine data')]):
+    _dot = tk.Canvas(deviceFrame, width=14, height=14, bg=canvasColor, highlightthickness=0)
+    _dot.grid(row=_i, column=0, padx=(0, 8), pady=3)
+    _oval = _dot.create_oval(2, 2, 12, 12, fill='#777', outline='')
+    tk.Label(deviceFrame, text=_name, font=helvsmall, fg=textColor, bg=canvasColor, anchor='w', width=13).grid(row=_i, column=1, sticky='w')
+    _detail = tk.Label(deviceFrame, text='', font=helvsmall, fg='#B0B8C0', bg=canvasColor, anchor='w', width=44)
+    _detail.grid(row=_i, column=2, sticky='w')
+    devicePanelRows[_role] = (_dot, _oval, _detail)
+tk.Button(deviceFrame, text='Change devices\u2026', command=device_settings, bg='#000000', fg=textColor, relief='flat', width=16, font=helvsmall).grid(row=len(devicePanelRows), column=1, columnspan=2, sticky='w', pady=(8, 2))
 
-rectangleFrame = ttk.Frame(root, padding=(5, 5, 5, 5), width=670, height=720)
-rectangleFrame.place(x=1000, y=110)
-canvas = Canvas(rectangleFrame, width=650, height=700, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
-canvas.place(x=0, y=0)
-
-errorFrame = ttk.Frame(root, padding=(5, 5, 5, 5), width=520, height=270)
-errorFrame.place(x=100, y=50)
-errorCanvas = Canvas(errorFrame, width=500, height=250, bg=canvasColor, highlightthickness=5, highlightbackground=canvasColor)
-errorCanvas.place(x=0, y=0)
-errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helvmedium)
-errorText.place(x=0, y=0)
+# Messages
+messageFrame = tk.LabelFrame(left, text=' Messages ', font=helvmedium, fg=textColor, bg=canvasColor, padx=12, pady=8, bd=0)
+messageFrame.pack(fill=X, pady=(12, 0))
+errorText = tk.Label(messageFrame, text='', fg='#FF6B6B', bg=canvasColor, font=helvsmall, justify='left', anchor='nw', wraplength=470, height=6)
+errorText.pack(fill=X)
 update_error_text()
 if errors:
     machineData.alarm('STARTUP', '; '.join(errors))
@@ -1127,18 +1239,46 @@ if errors:
 else:
     machineData.state('IDLE', 'program started')
 
+startButton = tk.Button(left, text='START', command=start_start, bg=enabledColor, activebackground='#1f8a5d', fg=textColor, relief='flat', width=20, height=6, font=helv)
+startButton.pack(pady=(28, 10))
+stopButton = tk.Button(left, text='Emergency STOP', command=on_stop_button_clicked, bg=disabledColor, activebackground='#b00', fg=textColor, relief='flat', width=20, height=2, font=helvmedium)
+stopButton.pack()
+root.protocol("WM_DELETE_WINDOW", on_stop_button_clicked)  # Gracefully shuts down program if window closed
 
-# Create the grid of rectangles
+# Progress and the cavity grid
+progressCanvas = Canvas(center, width=660, height=96, bg=canvasColor, highlightthickness=0)
+progressCanvas.pack(pady=(0, 10))
+totalProgressText = tk.Label(progressCanvas, text='Total Progress', fg=textColor, bg=canvasColor, font=helvmedium)
+totalProgressText.pack(side=TOP, pady=(8, 4))
+totalProgressBar = ttk.Progressbar(progressCanvas, length=600, maximum=100)
+totalProgressBar.pack(side=TOP, pady=(0, 8))
+totalProgressPercentage = tk.Label(totalProgressBar, text='0 %', fg='Black', bg='#E6E6E6', font=helvsmall)
+totalProgressPercentage.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+canvas = Canvas(center, width=650, height=700, bg=canvasColor, highlightthickness=0)
+canvas.pack()
 create_rectangle_grid(rows=5, columns=2, rectWidth=300, rectHeight=100, padding=50, canv=canvas)
 
+# Test settings, read only
+settingsFrame = tk.LabelFrame(right, text=' Test settings (read only) ', font=helvmedium, fg=textColor, bg=canvasColor, padx=12, pady=8, bd=0)
+settingsFrame.pack(fill=X)
+for _i, (_key, _) in enumerate(HYPOT_PARAMS):
+    tk.Label(settingsFrame, text=SETTING_LABELS.get(_key, _key), font=helvsmall, fg='#B0B8C0', bg=canvasColor, anchor='w', width=26).grid(row=_i, column=0, sticky='w', pady=1)
+    _value = tk.Label(settingsFrame, text='', font=helvsmall, fg=textColor, bg=canvasColor, anchor='e', width=12)
+    _value.grid(row=_i, column=1, sticky='e', pady=1)
+    settingsPanelRows[_key] = _value
+settingsNote = tk.Label(settingsFrame, text='', font=helvsmall, fg='#B0B8C0', bg=canvasColor, wraplength=330, justify='left')
+settingsNote.grid(row=len(HYPOT_PARAMS), column=0, columnspan=2, sticky='w', pady=(10, 0))
+
 # Admin UI
-adminLabel = tk.Label(root, text='Admin Settings', fg=textColor, bg=textBackgroundColor, font=helv)
-adminLabel.place(x=1525, y=850)
+adminFrame = tk.LabelFrame(right, text=' Admin settings ', font=helvmedium, fg=textColor, bg=canvasColor, padx=12, pady=8, bd=0)
+adminFrame.pack(fill=X, pady=(14, 0))
 adminText = tk.StringVar()
-adminTextbox = ttk.Entry(root, show='*', width=25)
-adminTextbox.place(x=1550, y=900)
-adminSubmitButton = tk.Button(root, text='Submit', command=admin_panel, bg='#000000', fg=textColor, relief='flat', width=9, height=2, font=helvsmall)
-adminSubmitButton.place(x=1550, y=925)
+adminTextbox = ttk.Entry(adminFrame, show='*', width=24)
+adminTextbox.grid(row=0, column=0, padx=(0, 8), pady=4)
+adminSubmitButton = tk.Button(adminFrame, text='Open', command=admin_panel, bg='#000000', fg=textColor, relief='flat', width=9, font=helvsmall)
+adminSubmitButton.grid(row=0, column=1)
+adminMessage = tk.Label(adminFrame, text='', font=helvsmall, fg=halfDisabledColor, bg=canvasColor, anchor='w')
+adminMessage.grid(row=1, column=0, columnspan=2, sticky='w')
 
 # Populate settings.ini file. Need to start admin_panel to populate fields to save
 adminTextbox.delete(0, 'end') # Clears Password
@@ -1150,6 +1290,8 @@ for widget in root.winfo_children(): # Close admin window
     if isinstance(widget, tk.Toplevel):
         widget.destroy()
 adminTextbox.delete(0, 'end')  # Clears Password
+refresh_settings_panel()
+refresh_device_panel()
 root.lift()
 #Test each cavity
 #switchDriver1.Execution.DisableAllChannels()
