@@ -15,6 +15,10 @@ import serial.tools.list_ports
 import socket
 from logging.handlers import TimedRotatingFileHandler
 
+from machinedata import MachineData
+
+VERSION = '2026.09.29'
+
 
 # Setup Logging
 errors = []
@@ -45,6 +49,7 @@ logger.setLevel(logging.DEBUG)
 
 print('Setting up Settings File')
 # Setup Settings File
+SETTINGS_PATH = resource_path('settings.ini')  # next to the exe; a shortcut's Start-in folder must not pick the file
 config = configparser.ConfigParser()
 config['Run Cavity'] = {}
 config['Laser Enabled'] = {}
@@ -52,6 +57,7 @@ config['Admin'] = {}
 config['Hypot'] = {}
 config['Laser'] = {}
 config['Hardware IDs'] = {}
+config['MachineData'] = {}
 
 
 print('Setting up Drivers')
@@ -70,39 +76,70 @@ switchHwid2 = "B0007BEKA"
 
 
 # Setup Laser Connectivity
-laserSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Creates socket
 laserIP = '192.180.0.11'
-try:
-    laserSocket.connect((laserIP, 50000))  # IP and Port number for laser
-except Exception as e:
-    print(f'Connection to Laser Marker failed: {e}')
-    logger.error(f'Connection to Laser Marker failed: {e}')
-    errors.append(f'Connection to Laser Marker failed')
+laserSocket = None
+laserConnected = False
+
+
+def connect_laser():
+    global laserSocket, laserConnected
+    try:
+        laserSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        laserSocket.settimeout(10)
+        laserSocket.connect((laserIP, 50000))  # IP and Port number for laser
+        laserConnected = True
+        if 'Connection to Laser Marker failed' in errors:
+            errors.remove('Connection to Laser Marker failed')
+    except Exception as e:
+        laserConnected = False
+        print(f'Connection to Laser Marker failed: {e}')
+        logger.error(f'Connection to Laser Marker failed: {e}')
+        if 'Connection to Laser Marker failed' not in errors:
+            errors.append('Connection to Laser Marker failed')
+    return laserConnected
+
+
+connect_laser()
 
 # General Variables
 adminPassword = '6789'  # Default password if not set in the settings file
 faultState = False
 cavityContinuitySuccesses = {} # 0=Failure, 1=Success, 2=SkippedIfContFail
 cavityHypotSuccesses = {}
+cavityLaserSuccesses = {}  # 0=Failure, 1=Success, 2=SkippedTestFailed, 3=Disabled
 runCavity = {}
 laserEnabled = {}
 hypotSettings = {}
+settingsValid = True
 usbHwids = set()
+# Test parameters for the single ACW step (continuity runs first in the same step). These are
+# the controlled process values: they must match the LHC work instruction, and the WI revision
+# they came from belongs in the comment below whenever they change. settings.ini overrides
+# them on the machine; every run logs the values it used and reads them back from the tester.
+# WI reference: to be filled in against the controlled LHC work instruction.
 defaultHypotSettings = {
-    'voltage': 1000,  # AC Voltage
-    'currenthighlimit': 10,  # Current High Limit
-    'currentlowlimit': 0,  # Current Low Limit
+    'voltage': 1000,  # AC voltage
+    'currenthighlimit': 10,  # Current high limit (mA)
+    'currentlowlimit': 0,  # Current low limit (mA)
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 0.3,  # RampDownTime in seconds
-    'rampdowntime': 0.0,  # Dewll time in seconds
+    'dwelltime': 0.3,  # Dwell time in seconds
+    'rampdowntime': 0.0,  # Ramp down time in seconds
     'arcsenselevel': 1,  # ArcSense level
     'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
-    'continuitytest': True,  # Continuity test
-    'highlimitresistance': 1.5,  # High limit of the continuity resistance
-    'lowlimitresistance': 0.01,  # Low limit of the continuity resistance
-    'resistanceoffset': 0.5  # Continuity resistance offset
+    'continuitytest': True,  # Continuity test runs in the same step, before the withstand test
+    'highlimitresistance': 1.5,  # High limit of the continuity resistance (ohm)
+    'lowlimitresistance': 0.01,  # Low limit of the continuity resistance (ohm)
+    'resistanceoffset': 0.5  # Continuity resistance offset (ohm)
 }
+# settings key, driver property. Used to load the tester and to read it back.
+HYPOT_PARAMS = (
+    ('voltage', 'Voltage'), ('currenthighlimit', 'HighLimit'), ('currentlowlimit', 'LowLimit'),
+    ('rampuptime', 'RampUp'), ('dwelltime', 'Dwell'), ('rampdowntime', 'RampDown'),
+    ('arcsenselevel', 'ArcSense'), ('arcdetection', 'ArcDetectEnabled'), ('frequency', 'Frequency'),
+    ('continuitytest', 'ContinuityEnabled'), ('highlimitresistance', 'ContHiLimit'),
+    ('lowlimitresistance', 'ContLoLimit'), ('resistanceoffset', 'ContOffset'),
+)
 
 # Admin Panel Settings Variables
 hypotTkinterObjs = {}
@@ -221,7 +258,7 @@ except Exception as e:
 
 
 def get_settings():
-    config.read('settings.ini')
+    config.read(SETTINGS_PATH)
     global errors
     global adminPassword
     global hypotHwid1
@@ -243,26 +280,28 @@ def get_settings():
             logger.error(f"Error reading Settings.ini file, creating new enabled variables. {ex}")
             runCavity[cav] = tk.IntVar(value=1)
             laserEnabled[cav] = tk.IntVar(value=1)
-    # Hypot
+    # Hypot. A value that will not parse is a stop, not a warning: the test must not run on a
+    # half-loaded settings dictionary.
+    global settingsValid
+    settingsValid = True
+    if 'Hypot' not in config:
+        config['Hypot'] = {}
     for key, defaultValue in defaultHypotSettings.items():
-        # Make sure values exist
         if key not in config['Hypot']:
-            value = defaultValue
-        else:
-            value = config['Hypot'][key]
-
-        # Convert to their proper types so the AddACWTest can parse them properly
+            hypotSettings[key] = defaultValue
+            continue
         try:
             if key in ('arcdetection', 'continuitytest'):
-                hypotSettings[key] = bool(value)
-            elif key in ('voltage', 'currenthighlimit', 'currentlowlimit', 'arcsenselevel', 'frequency'):
-                hypotSettings[key] = int(value)
-            elif key in ('rampuptime', 'rampdowntime', 'dwelltime', 'highlimitresistance', 'lowlimitresistance', 'resistanceoffset'):
-                hypotSettings[key] = float(value)
+                hypotSettings[key] = config['Hypot'].getboolean(key)  # bool('False') is True; getboolean is not
+            elif key in ('voltage', 'currenthighlimit', 'arcsenselevel', 'frequency'):
+                hypotSettings[key] = int(float(config['Hypot'][key]))
+            else:  # currentlowlimit and the times and resistances are decimals
+                hypotSettings[key] = float(config['Hypot'][key])
         except Exception as ex:
-            logger.error(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
-            print(f"Error reading Hypot values from Settings.ini file! Delete it!: {ex}")
-            errors.append("Error reading Settings.ini! Delete it, restart Program!")
+            settingsValid = False
+            logger.error(f"Bad value for {key} in settings.ini: {ex}")
+            print(f"Bad value for {key} in settings.ini: {ex}")
+            errors.append(f"Bad value for {key} in settings.ini. Fix it and restart.")
 
     updateHWIDS = {}
     try:
@@ -295,7 +334,7 @@ def get_settings():
 
 
 def default_hwid_conf(device, hwid):
-    with open('settings.ini', 'w') as configfile:
+    with open(SETTINGS_PATH, 'w') as configfile:
         config['Hardware IDs'][device] = hwid
         config.write(configfile)
 
@@ -304,7 +343,7 @@ def save_settings():
     # Write the config object to a file
     print("Attempting to Save Settings")
     logger.info("Attempting to Save Settings")
-    with open('settings.ini', 'w') as configfile:
+    with open(SETTINGS_PATH, 'w') as configfile:
         if config['Admin']['Password']:
             global adminPassword
             adminPassword = config['Admin']['Password']
@@ -373,10 +412,19 @@ def fault():
     hypotFaultHeader = tk.Label(faultWindow, text='Hypot Failures', font=helvUnderline, fg=textColor, bg=faultBackgroundColor)
     hypotFaultHeader.grid(row=1, column=3, columnspan=2, pady=5)
     for cavity, value in cavityHypotSuccesses.items():
-        if not value:  # If failed continuity test
+        if not value:  # If failed hypot test
             logger.info('Hypot fail on Cavity: ' + str(cavity))
             hypotFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=faultBackgroundColor)
             hypotFaultList[cavity].grid(row=cavity + 2, column=3)
+
+    laserFaultList = {}
+    laserFaultHeader = tk.Label(faultWindow, text='Not Marked', font=helvUnderline, fg=textColor, bg=faultBackgroundColor)
+    laserFaultHeader.grid(row=1, column=6, columnspan=2, pady=5)
+    for cavity, value in cavityLaserSuccesses.items():
+        if not value:  # Passed both tests but the laser did not mark it
+            logger.info('Laser fail on Cavity: ' + str(cavity))
+            laserFaultList[cavity] = tk.Label(faultWindow, text='Cavity ' + str(cavity), font=helvmedium, fg=textColor, bg=faultBackgroundColor)
+            laserFaultList[cavity].grid(row=cavity + 2, column=6)
 
 
 def non_fault():
@@ -409,51 +457,108 @@ def reset(closeWindow, window):
         cavityContinuitySuccesses[cavity] = 0
     for cavity in cavityHypotSuccesses:
         cavityHypotSuccesses[cavity] = 0
+    for cavity in cavityLaserSuccesses:
+        cavityLaserSuccesses[cavity] = 0
+    machineData.state('IDLE', 'reset')
     time.sleep(1)  # Make sure double clicks dont accidentally start it again
     startButton["state"] = "normal"  # Re-enables start button
 
+def settings_summary():
+    return ', '.join(f'{key}={hypotSettings[key]}' for key, _ in HYPOT_PARAMS)
+
+
+def values_match(actual, expected):
+    if isinstance(expected, bool):
+        return bool(actual) == expected
+    try:
+        return abs(float(actual) - float(expected)) < 0.005
+    except (TypeError, ValueError):
+        return actual == expected
+
+
 def create_hypot_tests():
-    for hypotDriver in [hypotDriver1, hypotDriver2]:
+    """Load the test onto both testers and read every parameter back. Returns False, and the run
+    must not start, if a step throws or a parameter reads back different from what was sent."""
+    logger.info(f'Test settings for this run: {settings_summary()}')
+    print(f'Test settings for this run: {settings_summary()}')
+    for name, hypotDriver in (('hypot1', hypotDriver1), ('hypot2', hypotDriver2)):
         # Hypot manual results read on page 83
         #   Add ACW test item by AddACWTest()
-        testDeleted = 0
         try:
             hypotDriver.Files.Delete(1)
-            testDeleted = 1
         except Exception as ex:
-            logger.error(f"Error deleting hypot test on hypot1: {ex}")
-            print(f"Error deleting hypot test on hypot1: {ex}")
-        if testDeleted == 1:
+            logger.error(f"Error deleting hypot test on {name}, run aborted: {ex}")
+            print(f"Error deleting hypot test on {name}, run aborted: {ex}")
+            errors.append(f'{name}: could not clear the old test. Reset and try again.')
+            return False
+        try:
+            hypotDriver.Steps.AddACWTestWithDefaults()
+            for key, prop in HYPOT_PARAMS:
+                setattr(hypotDriver.Parameters, prop, hypotSettings[key])
+            hypotDriver.Files.Save()
+        except Exception as ex:
+            # Before this returned False the tester was left holding AddACWTestWithDefaults()
+            # and the run went ahead on the instrument's own defaults.
+            logger.error(f"Error creating hypot test on {name}, run aborted: {ex}")
+            print(f"Error creating hypot test on {name}, run aborted: {ex}")
+            errors.append(f'{name}: could not load the test settings. Reset and try again.')
+            return False
+        for key, prop in HYPOT_PARAMS:
             try:
-                hypotDriver.Steps.AddACWTestWithDefaults()
-                hypotDriver.Parameters.Voltage = hypotSettings['voltage']
-                hypotDriver.Parameters.HighLimit = hypotSettings['currenthighlimit']
-                hypotDriver.Parameters.LowLimit = hypotSettings['currentlowlimit']
-                hypotDriver.Parameters.RampUp = hypotSettings['rampuptime']
-                hypotDriver.Parameters.Dwell = hypotSettings['dwelltime']
-                hypotDriver.Parameters.RampDown = hypotSettings['rampdowntime']
-                hypotDriver.Parameters.ArcSense = hypotSettings['arcsenselevel']
-                hypotDriver.Parameters.ArcDetectEnabled = hypotSettings['arcdetection']
-                hypotDriver.Parameters.Frequency = hypotSettings['frequency']
-                hypotDriver.Parameters.ContinuityEnabled = hypotSettings['continuitytest']
-                hypotDriver.Parameters.ContHiLimit = hypotSettings['highlimitresistance']
-                hypotDriver.Parameters.ContLoLimit = hypotSettings['lowlimitresistance']
-                hypotDriver.Parameters.ContOffset = hypotSettings['resistanceoffset']
-                hypotDriver.Files.Save()
+                actual = getattr(hypotDriver.Parameters, prop)
             except Exception as ex:
-                logger.error(f"Error creating hypot test on hypot1: {ex}")
-                print(f"Error creating hypot test on hypot1: {ex}")
-        else:
-            logger.error(f"Failed to delete test, ending program")
-            print(f"Failed to delete test, ending program")
-            stop()
+                logger.warning(f'{name} {prop} could not be read back: {ex}')
+                continue
+            if not values_match(actual, hypotSettings[key]):
+                logger.error(f'{name} {prop} read back {actual}, expected {hypotSettings[key]}; run aborted')
+                print(f'{name} {prop} read back {actual}, expected {hypotSettings[key]}; run aborted')
+                errors.append(f'{name}: {key} on the tester is {actual}, not {hypotSettings[key]}. Do not run.')
+                machineData.alarm('SETTINGS', f'{name} {key} read back {actual}, expected {hypotSettings[key]}')
+                return False
+        logger.info(f'{name} test loaded and verified')
+    return True
+
+
+def preflight():
+    """Everything that has to be true before a fixture run may start."""
+    if not settingsValid:
+        errors.append('settings.ini has a bad value. Fix it and restart the program.')
+        return False
+    laserWanted = any(runCavity[c].get() == 1 and laserEnabled[c].get() == 1 for c in runCavity)
+    if laserWanted and not laserConnected and not connect_laser():
+        errors.append('Laser marker not connected. Reconnect it, or disable the laser for this run.')
+        machineData.alarm('LASER', 'laser marker not connected at start of run')
+        return False
+    return create_hypot_tests()
+
+
+def run_samples():
+    """Per-run values for the machine database: every test parameter the run used, with the
+    program's own default as the limits so a settings.ini that drifted from the code shows as out
+    of spec, plus each cavity's result."""
+    samples = {}
+    for key, _ in HYPOT_PARAMS:
+        expected = defaultHypotSettings[key]
+        value = hypotSettings[key]
+        samples[key] = {'v': float(value), 'lo': float(expected), 'hi': float(expected)}
+    for cav in range(1, 11):
+        if runCavity['cavity' + str(cav)].get() == 1:
+            samples[f'cavity{cav}_continuity'] = cavityContinuitySuccesses[cav]
+            samples[f'cavity{cav}_hypot'] = cavityHypotSuccesses[cav]
+            samples[f'cavity{cav}_laser'] = cavityLaserSuccesses[cav]
+    return samples
 
 
 def start():
     startButton["state"] = "disabled"  # Disabled start button so its not running twice at the same time due to threading
     disabledCavs = 0
-    create_hypot_tests()
     global faultState
+    if not preflight():
+        update_error_text()
+        startButton["state"] = "normal"
+        return
+    runStarted = time.time()
+    machineData.state('RUNNING', 'fixture run')
     for cavity, value in runCavity.items():
         if value.get() == 0:
             disabledCavs += 1
@@ -462,6 +567,7 @@ def start():
     for i in range(1, 11):
         cavityContinuitySuccesses[i] = 0
         cavityHypotSuccesses[i] = 0
+        cavityLaserSuccesses[i] = 0
 
     for cavity, value in runCavity.items():
         cavitynum = ''.join([char for char in cavity if char.isdigit()])
@@ -484,11 +590,13 @@ def start():
         else: # If cavity Disabled
             cavityContinuitySuccesses[cavitynum] = 3
             cavityHypotSuccesses[cavitynum] = 3  # Dont show on fault window, but don't do other functions either
+            cavityLaserSuccesses[cavitynum] = 3
         if laserEnabled['cavity' + str(cavitynum)].get() == 1:
             print('Lasering Cavity: ' + str(cavitynum))
             logger.info('Lasering Cavity: ' + str(cavitynum))
             laser(cavitynum)
         else:
+            cavityLaserSuccesses[cavitynum] = 3
             print('Laser Disabled. Skipping Cavity: ' + str(cavitynum))
             logger.info('Laser Disabled. Skipping Cavity: ' + str(cavitynum))
         print(f"Continuity results: {cavityContinuitySuccesses}")
@@ -496,15 +604,20 @@ def start():
         print(f"Hypot results:      {cavityHypotSuccesses}")
         logger.info(f"Hypot results:      {cavityHypotSuccesses}")
 
-        if cavityContinuitySuccesses[cavitynum] == 0 or cavityHypotSuccesses[cavitynum] == 0:
+        if cavityContinuitySuccesses[cavitynum] == 0 or cavityHypotSuccesses[cavitynum] == 0 or cavityLaserSuccesses[cavitynum] == 0:
             print(f"Fault State True")
             logger.info(f"Fault State True")
             faultState = True
 
         print('=================================')  # Separate cavities for testing readability
+    tested = [c for c in range(1, 11) if runCavity['cavity' + str(c)].get() == 1]
+    good = sum(1 for c in tested if cavityContinuitySuccesses[c] == 1 and cavityHypotSuccesses[c] == 1 and cavityLaserSuccesses[c] != 0)
+    machineData.cycle(round(time.time() - runStarted, 1), good, len(tested) - good, run_samples())
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
+        machineData.state('DOWN', 'cavity failed, waiting for reset')
         fault()
     else:
+        machineData.state('IDLE', 'run complete')
         non_fault()
 
 
@@ -521,6 +634,7 @@ def close_drivers():
 def stop():
     logger.error('Emergency Stop Used!')
     print('Emergency Stop Used!')
+    machineData.close()
     try:
         switchDriver1.Execution.DisableAllChannels()
         switchDriver2.Execution.DisableAllChannels()
@@ -592,7 +706,15 @@ def hypot_execution(cavityNum):
 def read_hypot(hypotDriver, cavityNum):
     global faultState
     lastOpcStatus = False
+    deadline = time.time() + hypotSettings['rampuptime'] + hypotSettings['dwelltime'] + hypotSettings['rampdowntime'] + 30
     while (True):
+        if time.time() > deadline:
+            logger.error(f'Cavity {cavityNum}: no result from the tester in time; counted as a failure')
+            print(f'Cavity {cavityNum}: no result from the tester in time; counted as a failure')
+            errors.append(f'Cavity {cavityNum}: tester did not answer. Check the tester.')
+            machineData.alarm('HYPOT_TIMEOUT', f'cavity {cavityNum}: no result from tester')
+            faultState = True
+            break
         output = hypotDriver.Execution.ReadTestDisplayRaw().split(',')  # Split into an array for data parsing
         print(output)
         logger.info('Raw Output: ' + hypotDriver.Execution.ReadTestDisplayRaw())
@@ -625,17 +747,29 @@ def read_hypot(hypotDriver, cavityNum):
         lastOpcStatus = '1' in opcStatus
         time.sleep(0.1)
 
+def laser_ok(response):
+    parts = response.split(',')
+    return len(parts) > 1 and parts[1].strip() == 'OK'
+
+
 def laser(cavityNum):
+    global faultState
     if cavityHypotSuccesses[cavityNum] == 1 and cavityContinuitySuccesses[cavityNum] == 1:  # Only Laser if passes both tests
-        if send_laser('RX,Ready\r').split(',')[1] == 'OK':
-            cavityNum -= 1 # Laser programs array starts at 0
-            send_laser('WX,ProgramNo='+str(cavityNum)+'\r')
-            send_laser('WX,StartMarking\r')
+        programNo = cavityNum - 1  # Laser programs array starts at 0
+        if (laser_ok(send_laser('RX,Ready\r'))
+                and laser_ok(send_laser('WX,ProgramNo=' + str(programNo) + '\r'))
+                and laser_ok(send_laser('WX,StartMarking\r'))):
             send_laser('RX,ProgramNo\r')
+            cavityLaserSuccesses[cavityNum] = 1
         else:
-            print('Laser not ready, skipping')
-            logger.info('Laser not ready, skipping')
+            # A passed part that did not get marked is a fault, not a log line
+            cavityLaserSuccesses[cavityNum] = 0
+            faultState = True
+            print(f'Cavity {cavityNum}: laser did not mark')
+            logger.error(f'Cavity {cavityNum}: laser did not mark')
+            machineData.alarm('LASER', f'cavity {cavityNum}: laser did not answer OK')
     else:
+        cavityLaserSuccesses[cavityNum] = 2
         print('Skipping Laser due to failed cont or hypot')
         logger.info('Skipping Laser due to failed cont or hypot')
 
@@ -946,6 +1080,8 @@ for y in range(1, 11):
 
 # Get settings on program start
 get_settings()
+machineData = MachineData(config['MachineData'], logger, VERSION)
+machineData.start()
 
 #       Starting UI Setup
 # Fonts and Styles
@@ -985,6 +1121,11 @@ errorCanvas.place(x=0, y=0)
 errorText = tk.Label(errorCanvas, text='', fg='red', bg=canvasColor, font=helvmedium)
 errorText.place(x=0, y=0)
 update_error_text()
+if errors:
+    machineData.alarm('STARTUP', '; '.join(errors))
+    machineData.state('DOWN', errors[0])
+else:
+    machineData.state('IDLE', 'program started')
 
 
 # Create the grid of rectangles

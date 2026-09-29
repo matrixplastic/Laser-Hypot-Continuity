@@ -52,8 +52,25 @@ This project is designed to run a 10-cavity fixture through a variety of tests a
 
 ## Configuration
 
-- settings.ini to modify settings of hypot, continuity, and laser
-- settings.ini also for modifying hardware IDs before program launch
+- settings.ini sits next to the exe (not in the working directory) and is created on first run
+- [Hypot] holds the test parameters. They are controlled process values: keep them equal to the
+  LHC work instruction, and note the WI revision in the comment above `defaultHypotSettings`
+  in Main.py when they change
+- Every run logs the settings it used and reads them back from both testers before the first
+  cavity; a mismatch stops the run with a message in the status box
+- [Hardware IDs] holds the USB hardware IDs of the two testers and two switches
+- [MachineData] turns on publishing to the plant machine-data broker (see below)
+- A value that will not parse stops the START button with a message; fix the file and restart
+
+## Machine data
+
+With `[MachineData] enabled = 1` the program publishes to the plant MQTT broker on the
+machinedata VM (`host`, `port`, `user`, `password`, `machine_id`): its state, one cycle per
+fixture run with good and reject counts and every test parameter the run used, alarms
+(settings mismatch, tester timeout, laser not marking, startup errors) and a heartbeat every
+minute. That is what the ERP floor view and the OEE rollup read. If the broker is unreachable
+the program still runs tests and logs the outage. Details, topics and the server-side steps
+are in the ERP repo, `docs/work-instructions/machine-monitor-lhc.md`.
 
 ## Contributions
 
@@ -75,6 +92,27 @@ git clone https://github.com/matrixplastic/Laser-Hypot-Continuity.git
 cd /Path/To/Your/Cloned/Project
 pip install -r requirements.txt
 ```
+
+## Building the exe
+
+The machine runs a PyInstaller build. Build from a clean checkout of the commit being released,
+keep the previous exe next to the new one named by date, and copy the machine's settings.ini
+and logs folder off before swapping:
+
+```sh
+pip install pyinstaller
+pyinstaller --onedir --name LaserHypotCont --add-data "SC6540.dll;." --add-data "ARI38XX_64.dll;." Main.py
+```
+
+Adjust the `--add-data` entries to wherever the two driver DLLs live on the build PC. Commit the
+generated `LaserHypotCont.spec` so the next build is the same build.
+
+## Releasing a test-parameter change
+
+Any change to [Hypot] values or to `defaultHypotSettings` is a controlled process change: it
+needs the work instruction revised first, a golden-sample run on all three fixtures on the new
+build with the tester display checked against the WI, and sign-off recorded before the exe
+goes on the machine.
 
 ## Help
 The error codes are listed in the *.chm file which should be at C:\Program Files\IVI Foundation\IVI\Drivers\ARI38XX. Please refer to the following pages if you would like to know more about the errors,
