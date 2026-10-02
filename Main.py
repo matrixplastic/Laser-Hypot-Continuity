@@ -119,8 +119,8 @@ defaultHypotSettings = {
     'currenthighlimit': 10,  # Current high limit (mA)
     'currentlowlimit': 0,  # Current low limit (mA)
     'rampuptime': 0.1,  # Ramp up time in seconds
-    'dwelltime': 0.3,  # Dwell time in seconds
-    'rampdowntime': 0.0,  # Ramp down time in seconds
+    'dwelltime': 5,  # Dwell time in seconds
+    'rampdowntime': 0.0,  # Ramp downtime in seconds
     'arcsenselevel': 1,  # ArcSense level
     'arcdetection': True,  # Arc detection
     'frequency': ARI38XXLib.ARI38XXFrequency60Hz,  # Frequency
@@ -158,6 +158,7 @@ statusText = {}
 root = tk.Tk()
 root.geometry('1800x1000')
 root.title('Laser Hipot Continuity')
+deviceWindow = tk.Toplevel(root)
 
 
 def toolwindow(window):
@@ -422,13 +423,13 @@ def device_settings():
     """Change which tester or switch fills each role while the program runs. Connect swaps the
     driver in place and saves the serial to settings.ini; no restart and no file editing."""
     global deviceWindow
+    global laserIP
     try:
         if deviceWindow.winfo_exists():
             deviceWindow.focus_force()
             return
     except (NameError, tk.TclError):
         pass
-    deviceWindow = tk.Toplevel(root)
     deviceWindow.title('Devices')
     deviceWindow.attributes('-topmost', True)
     deviceWindow.configure(bg=backgroundColor, padx=14, pady=10)
@@ -437,31 +438,31 @@ def device_settings():
              font=helvsmall, fg='#B0B8C0', bg=backgroundColor, wraplength=900, justify='left').grid(row=1, column=0, columnspan=4, sticky='w', pady=(0, 8))
     combos, status = {}, {}
 
-    def paint(role):
-        st = deviceStatus[role]
-        status[role].config(text=('Connected: ' if st['ok'] else 'Not connected: ') + st['detail'], fg=enabledColor if st['ok'] else halfDisabledColor)
+    def paint(devrole):
+        st = deviceStatus[devrole]
+        status[devrole].config(text=('Connected: ' if st['ok'] else 'Not connected: ') + st['detail'], fg=enabledColor if st['ok'] else halfDisabledColor)
 
     def refresh_lists():
         ports = attached_ports()
-        for role, combo in combos.items():
+        for devrole, combo in combos.items():
             combo['values'] = [p[0] for p in ports]
-            current = next((p[0] for p in ports if p[1] and p[1] == role_hwid(role)), '')
-            combo.set(current or (f'(serial {role_hwid(role)} is not attached)' if role_hwid(role) else '(none)'))
-            paint(role)
+            current = next((p[0] for p in ports if p[1] and p[1] == role_hwid(devrole)), '')
+            combo.set(current or (f'(serial {role_hwid(devrole)} is not attached)' if role_hwid(devrole) else '(none)'))
+            paint(devrole)
 
-    def connect(role):
+    def connect(devrole):
         if startButton['state'] == 'disabled':
-            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
+#            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
             return
-        chosen = combos[role].get()
+        chosen = combos[devrole].get()
         serialNo = next((p[1] for p in attached_ports() if p[0] == chosen), None)
         if not serialNo:
-            messagebox.showwarning('Devices', 'Pick an attached device from the list first.', parent=deviceWindow)
+#            messagebox.showwarning('Devices', 'Pick an attached device from the list first.', parent=deviceWindow)
             return
-        if connect_device(role, serialNo):
-            config['Hardware IDs'][role] = serialNo
+        if connect_device(devrole, serialNo):
+            config['Hardware IDs'][devrole] = serialNo
             write_settings()
-        paint(role)
+        paint(devrole)
         update_error_text()
 
     row = 2
@@ -486,7 +487,7 @@ def device_settings():
     def reconnect_laser():
         global laserIP
         if startButton['state'] == 'disabled':
-            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
+#            messagebox.showwarning('Devices', 'Wait for the test to finish before changing devices.', parent=deviceWindow)
             return
         laserIP = ipVar.get().strip() or laserIP
         config['Laser']['ip'] = laserIP
@@ -685,7 +686,7 @@ def preflight():
         errors.append('Not connected: ' + ', '.join(missing) + '. Use Change devices.')
         machineData.alarm('DEVICES', 'not connected: ' + ', '.join(missing))
         return False
-    laserWanted = any(runCavity[c].get() == 1 and laserEnabled[c].get() == 1 for c in runCavity)
+    laserWanted = any(runCavity[cav].get() == 1 and laserEnabled[cav].get() == 1 for cav in runCavity)
     if laserWanted and not laserConnected and not connect_laser():
         errors.append('Laser marker not connected. Reconnect it, or disable the laser for this run.')
         machineData.alarm('LASER', 'laser marker not connected at start of run')
@@ -769,8 +770,8 @@ def start():
             faultState = True
 
         print('=================================')  # Separate cavities for testing readability
-    tested = [c for c in range(1, 11) if runCavity['cavity' + str(c)].get() == 1]
-    good = sum(1 for c in tested if cavityContinuitySuccesses[c] == 1 and cavityHypotSuccesses[c] == 1 and cavityLaserSuccesses[c] != 0)
+    tested = [cav for cav in range(1, 11) if runCavity['cavity' + str(cav)].get() == 1]
+    good = sum(1 for cav in tested if cavityContinuitySuccesses[cav] == 1 and cavityHypotSuccesses[cav] == 1 and cavityLaserSuccesses[cav] != 0)
     machineData.cycle(round(time.time() - runStarted, 1), good, len(tested) - good, run_samples())
     if faultState:  # If any part has a problem, have operators acknowledge they took care of it before starting again
         machineData.state('DOWN', 'cavity failed, waiting for reset')
